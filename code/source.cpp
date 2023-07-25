@@ -2,8 +2,7 @@
 #include <GLFW/glfw3.h>
 #include "gui.h"
 #include "shader.h"
-
-
+#include "sphere.h"
 
 
 
@@ -49,10 +48,45 @@ void pointSetUp(shader &shader,unsigned int &buffer)
 int main()
 {
     windowCreation window;
+    sphere sphere;
     window.windowInitialize();
     GUI::init(window.window);
     bool show_another_window=true;
     // -----------
+
+    unsigned int vaoId;
+    glGenVertexArrays(1, &vaoId);
+    glBindVertexArray(vaoId);
+
+    // create VBO to copy interleaved vertex data (V/N/T) to VBO
+    unsigned int vboId;
+    glGenBuffers(1, &vboId);
+    glBindBuffer(GL_ARRAY_BUFFER, vboId);           // for vertex data
+    glBufferData(GL_ARRAY_BUFFER,                   // target
+                sphere.getVertexSize(), // data size, # of bytes
+                sphere.getVertexPointer(),   // ptr to vertex data
+                GL_STATIC_DRAW);                   // usage
+
+    // create VBO to copy index data to VBO
+    unsigned int iboId;
+    glGenBuffers(1, &iboId);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, iboId);   // for index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,           // target
+                sphere.getIndexSize(),             // data size, # of bytes
+                sphere.getIndices(),               // ptr to index data
+                GL_STATIC_DRAW);                   // usage
+
+    // activate attrib arrays
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
+
+    // set attrib arrays with stride and offset
+    int stride = 32;     
+    glVertexAttribPointer(0, 3, GL_FLOAT, false, stride, (void*)0);
+    glVertexAttribPointer(1, 3, GL_FLOAT, false, stride, (void*)(sizeof(float)*3));
+    glVertexAttribPointer(2,  2, GL_FLOAT, false, stride, (void*)(sizeof(float)*6));
+
     while (!glfwWindowShouldClose(window.window))
     {
         // input
