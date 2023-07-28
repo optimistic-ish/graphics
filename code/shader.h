@@ -2,6 +2,7 @@
 #define SHADER_H
 
 #include <glad/glad.h>
+#include <GLFW/glfw3.h>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -129,6 +130,10 @@ struct shader
     void deleteShader()
     {
         glDeleteProgram(ID);
+    }
+    void setVal(std::string name, int value)
+    {
+        glUniform1i(glGetUniformLocation(ID, name.c_str()), value);
     }
 
 };
