@@ -37,7 +37,6 @@ void pointSetUp(shader &shader)
     // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     
     shader.parseShader("shader/sphere.shader"); // reading the shader source code
-
     shader.shaderCreation();                        // creating shader from the shader source code
     shader.useShader();
 }
