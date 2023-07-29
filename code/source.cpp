@@ -5,6 +5,13 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "gui.h"
 #include "shader.h"
+// #include <random>
+
+// inline float randomFloat() {
+//     static std::uniform_real_distribution<float> distribution(0.0, 1.0);
+//     static std::mt19937 generator;
+//     return distribution(generator);
+// }
 
 
 const float vertices[] = {
@@ -56,6 +63,7 @@ int main()
 
     
     float radius= 300;
+    
     pointSetUp(s1);    
     s1.useShader();    
     
@@ -63,7 +71,7 @@ int main()
     {
         // input
         // -----
-
+        // glm::vec2 random(randomFloat(),randomFloat());
         processInput(window.window);
 
         glClearColor(1.f, 0.f, 0.3, 1.0f);
@@ -74,6 +82,10 @@ int main()
 
         unsigned int radvID = glGetUniformLocation(s1.ID, "sphereRadius");
         glUniform1f(radvID, radius); 
+
+        // unsigned int randomID = glGetUniformLocation(s1.ID, "random");
+        // glUniform2fv(randomID,1,glm::value_ptr(random));
+        // std::cout<<random.x<<" "<<random.y<<std::endl; 
         
        
 

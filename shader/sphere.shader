@@ -13,7 +13,8 @@ void main() {
 #define SAMPLING_DEPTH 5
 out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
-uniform vec2 iResolution; //Resolution
+uniform vec2 iResolution; // Resolution as per the changes by user
+uniform vec2 random;
 
 struct Object {	
 	vec3 center;
@@ -39,16 +40,16 @@ float hit_sphere(const vec3 center, float radius, const ray r) {
     }
 }
 
-
-vec2 co;
-float rand(){
-  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+float rand(vec2 co){
+  co.x =  fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+  co.y =  fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+  return co.x;
 }
 
-vec3 random_in_unit_sphere() {
-    float phi = 2.0 * PI * rand();
-    float cosTheta = 2.0 * rand() - 1.0;
-    float u = rand();
+vec3 random_in_unit_sphere(vec2 seed) {
+    float phi = 2.0 * PI * rand(seed);
+    float cosTheta = 2.0 * rand(seed) - 1.0;
+    float u = rand(seed);
 
     float theta = acos(cosTheta);
     float r = pow(u, 1.0 / 3.0);
@@ -61,8 +62,8 @@ vec3 random_in_unit_sphere() {
 }
 vec3 computeColor(vec3 P , vec3 n)
 {
-    vec3 target = P + n + random_in_unit_sphere();
-    return vec3(0.5*target.xyz);
+    vec3 target = P + n + random_in_unit_sphere(P.xy);
+    return vec3(target.xyz);
 }
 
 void main() 
@@ -87,6 +88,7 @@ void main()
 
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3(0.0, 0.0, 0.0);
+    //Background sphere
     vec3 backgroundCenter=vec3(0.0,-2.7,0.0);
     float backgroundRadius=2.8;
 
