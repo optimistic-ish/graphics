@@ -12,6 +12,11 @@ out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
 uniform vec2 iResolution; //Resolution
 
+struct Object {	
+	vec3 center;
+	vec3 radius;	
+};
+
 struct ray {
 	vec3 origin;
 	vec3 direction;
@@ -53,25 +58,22 @@ void main()
 
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3(0.0, 0.0, 0.0);
-    
+    vec3 backgroundCenter=vec3(0.0,-2.7,0.0);
+    float backgroundRadius=2.8;
 
-    // if (hit_sphere(sphereCenter, sphereRadius, r))
-    // FragColor = vec4(1.0, 0.0, 0.0, 0.0); // Red if there's an intersection
-    // else
-    // FragColor = vec4(1.0, 1.0, 1.0, 0.0); // White otherwise
+    float t= hit_sphere(backgroundCenter, backgroundRadius, r);
+    if(t>0.0)
+        FragColor = vec4(0.0, 1.0, 0.0, 0.0); // Green if there's an intersection
+    else
+        FragColor = vec4(1.0, 1.0, 1.0, 0.0); // White otherwise
 
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
 
-    float t = hit_sphere(sphereCenter, radiusNormalized, r);
+    t = hit_sphere(sphereCenter, radiusNormalized, r);
     if (t > 0.0) {
         vec3 N = normalize(r.origin+r.direction*t - sphereCenter);
         FragColor = vec4(0.5*N.x+0.5, 0.5*N.y+0.5, 0.5*N.z+0.5,1.0);
     }
-    else
-    {
-        vec3 unit_direction = normalize(r.direction);
-        t = 0.5*(unit_direction.y + 1.0);
-        FragColor = vec4(1-0.5*t,1-0.3*t,1.0,1.0);
-    }
+    
     
 }
