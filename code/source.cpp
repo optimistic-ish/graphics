@@ -1,18 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include "gui.h"
 #include "shader.h"
-// #include <random>
-
-// inline float randomFloat() {
-//     static std::uniform_real_distribution<float> distribution(0.0, 1.0);
-//     static std::mt19937 generator;
-//     return distribution(generator);
-// }
-
 
 const float vertices[] = {
     -1.0f,  1.0f,
@@ -69,6 +58,9 @@ int main()
     
     while (!glfwWindowShouldClose(window.window))
     {
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
         // input
         // -----
         // glm::vec2 random(randomFloat(),randomFloat());
@@ -83,8 +75,11 @@ int main()
         unsigned int radvID = glGetUniformLocation(s1.ID, "sphereRadius");
         glUniform1f(radvID, radius); 
 
-        // unsigned int randomID = glGetUniformLocation(s1.ID, "random");
-        // glUniform2fv(randomID,1,glm::value_ptr(random));
+        unsigned int cameraID = glGetUniformLocation(s1.ID, "cameraPosition");
+        glUniform3fv(cameraID,1, glm::value_ptr(cameraPos)); 
+
+        unsigned int directionID = glGetUniformLocation(s1.ID, "rotationMatrix");
+        glUniformMatrix4fv(directionID,1, GL_TRUE,glm::value_ptr(directionRotationMatrix));
         // std::cout<<random.x<<" "<<random.y<<std::endl; 
         
        

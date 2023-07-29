@@ -15,6 +15,8 @@ out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
 uniform vec2 iResolution; // Resolution as per the changes by user
 uniform vec2 random;
+uniform vec3 cameraPosition;
+uniform mat4 rotationMatrix;
 
 struct Object {	
 	vec3 center;
@@ -79,12 +81,14 @@ void main()
     screenCoords.x *= aspectRatio;
 
     // Ray origin (camera position)
-    vec3 cameraPosition = vec3(0.0, 0.0, 10.0);
+    // cameraPosition = vec3(0.0, 0.0, 10.0);
 
     // Ray direction (pointing from camera to screen coordinates)
     ray r;
     r.origin = cameraPosition;
-    r.direction = normalize(vec3(screenCoords, -1.0) - cameraPosition);
+    vec3 try=vec3(screenCoords, -1.0) - cameraPosition;
+    r.direction=(normalize(vec4(try, 0.0)) * rotationMatrix).xyz;
+    // r.direction = normalize(vec3(screenCoords, -1.0) - cameraPosition);
 
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3(0.0, 0.0, 0.0);
@@ -97,7 +101,8 @@ void main()
         vec3 P = r.origin+r.direction*t;
         vec3 N = normalize(P- sphereCenter);
 
-        FragColor = vec4(computeColor(P, N),1.0);
+        vec4 temp = vec4(computeColor(P, N),1.0);
+        FragColor = vec4(temp.x,temp.y+0.9,temp.z,1.0);
     }
     else
         FragColor = vec4(1.0, 1.0, 1.0, 0.0); // White otherwise
