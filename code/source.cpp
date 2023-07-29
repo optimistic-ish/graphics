@@ -1,5 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "gui.h"
 #include "shader.h"
 
@@ -52,9 +55,9 @@ int main()
     // -----------
 
     
-    
+    float radius= 300;
     pointSetUp(s1);    
-    s1.useShader(); 
+    s1.useShader();    
     
     while (!glfwWindowShouldClose(window.window))
     {
@@ -66,16 +69,21 @@ int main()
         glClearColor(1.f, 0.f, 0.3, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        
+        unsigned int resID = glGetUniformLocation(s1.ID, "iResolution");        
+        glUniform2f(resID, (float)SCR_WIDTH,(float)SCR_HEIGHT);
 
-
+        unsigned int radvID = glGetUniformLocation(s1.ID, "sphereRadius");
+        glUniform1f(radvID, radius); 
         
+       
+
+        glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES,0,6);
         
         // render
         // ------
         
-        GUI::render(show_another_window);
+        GUI::render(show_another_window,&radius);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

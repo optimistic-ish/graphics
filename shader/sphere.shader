@@ -9,8 +9,8 @@ void main() {
 #shader fragment
 #version 330 core
 out vec4 FragColor;
-
-
+uniform float sphereRadius; // Adjust the sphere radius as needed
+uniform vec2 iResolution; //Resolution
 
 struct ray {
 	vec3 origin;
@@ -34,7 +34,7 @@ float hit_sphere(const vec3 center, float radius, const ray r) {
 void main()
 {
     // Manual resolution (800x600)
-    vec2 iResolution = vec2(800.0, 800.0);
+    
 
     // Normalized screen coordinates (-1 to 1)
     vec2 screenCoords = (gl_FragCoord.xy * 2.0 - iResolution) / iResolution;
@@ -53,15 +53,16 @@ void main()
 
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3(0.0, 0.0, 0.0);
-    float sphereRadius = 0.5; // Adjust the sphere radius as needed
+    
 
     // if (hit_sphere(sphereCenter, sphereRadius, r))
     // FragColor = vec4(1.0, 0.0, 0.0, 0.0); // Red if there's an intersection
     // else
     // FragColor = vec4(1.0, 1.0, 1.0, 0.0); // White otherwise
 
+    float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
 
-    float t = hit_sphere(sphereCenter, sphereRadius, r);
+    float t = hit_sphere(sphereCenter, radiusNormalized, r);
     if (t > 0.0) {
         vec3 N = normalize(r.origin+r.direction*t - sphereCenter);
         FragColor = vec4(0.5*N.x+0.5, 0.5*N.y+0.5, 0.5*N.z+0.5,1.0);

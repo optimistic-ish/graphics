@@ -1,5 +1,9 @@
 #include "gui.h"
 
+
+unsigned int SCR_WIDTH=800;
+unsigned int SCR_HEIGHT=800;
+
 namespace GUI {
 	
 	GLFWwindow* window;
@@ -33,8 +37,8 @@ namespace GUI {
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
-    void windowUI(bool &show_another_window)
-    {
+    void windowUI(bool &show_another_window, float *radiusValue)
+    {        
         
         if (show_another_window)
         {
@@ -42,15 +46,16 @@ namespace GUI {
             ImGui::Text("Hello from control window!");
             if (ImGui::Button("Close Me"))
                 show_another_window = false;
+            ImGui::SliderFloat("radius",radiusValue,100.0f, 450.0f);
             ImGui::End();
         }
     }
-    void render(bool &windowDraw) {
+    void render(bool &windowDraw, float *radiusValue ) {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-        windowUI(windowDraw);
+        windowUI(windowDraw, radiusValue);
 		
 
 		ImGui::Render();
@@ -87,7 +92,12 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     {
         // make sure the viewport matches the new window dimensions; note that width and
         // height will be significantly larger than specified on retina displays.
+        
         glViewport(0, 0, width, height);
+
+        SCR_HEIGHT=height;
+        SCR_WIDTH=width;
+        
     }
 
 void processInput(GLFWwindow *window)

@@ -5,8 +5,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 800;
+extern unsigned int SCR_WIDTH;
+extern unsigned int SCR_HEIGHT;
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -28,6 +28,6 @@ namespace GUI {
 	void init(GLFWwindow* window);
 	void cleanup();
 
-	void render(bool &draw);
+	void render(bool &draw, float *radiusValue);
 };
 
