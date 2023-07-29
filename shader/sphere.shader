@@ -8,6 +8,9 @@ void main() {
 
 #shader fragment
 #version 330 core
+
+#define PI  3.1415926535
+#define SAMPLING_DEPTH 5
 out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
 uniform vec2 iResolution; //Resolution
@@ -26,7 +29,7 @@ struct ray {
 float hit_sphere(const vec3 center, float radius, const ray r) {
     vec3 oc = r.origin - center;
     float a = dot(r.direction, r.direction);
-    float b = dot(oc, r.direction);
+    float b = dot(oc, r.direction);//half b
     float c = dot(oc, oc) - radius*radius;
     float discriminant = b*b - a*c;
     if (discriminant < 0) {
@@ -36,7 +39,33 @@ float hit_sphere(const vec3 center, float radius, const ray r) {
     }
 }
 
-void main()
+
+vec2 co;
+float rand(){
+  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+vec3 random_in_unit_sphere() {
+    float phi = 2.0 * PI * rand();
+    float cosTheta = 2.0 * rand() - 1.0;
+    float u = rand();
+
+    float theta = acos(cosTheta);
+    float r = pow(u, 1.0 / 3.0);
+
+    float x = r * sin(theta) * cos(phi);
+    float y = r * sin(theta) * sin(phi);
+    float z = r * cos(theta);
+
+    return vec3(x, y, z);
+}
+vec3 computeColor(vec3 P , vec3 n)
+{
+    vec3 target = P + n + random_in_unit_sphere();
+    return vec3(0.5*target.xyz);
+}
+
+void main() 
 {
     // Manual resolution (800x600)
     
@@ -62,8 +91,12 @@ void main()
     float backgroundRadius=2.8;
 
     float t= hit_sphere(backgroundCenter, backgroundRadius, r);
-    if(t>0.0)
-        FragColor = vec4(0.0, 1.0, 0.0, 0.0); // Green if there's an intersection
+    if(t>0.0){
+        vec3 P = r.origin+r.direction*t;
+        vec3 N = normalize(P- sphereCenter);
+
+        FragColor = vec4(computeColor(P, N),1.0);
+    }
     else
         FragColor = vec4(1.0, 1.0, 1.0, 0.0); // White otherwise
 
@@ -71,8 +104,10 @@ void main()
 
     t = hit_sphere(sphereCenter, radiusNormalized, r);
     if (t > 0.0) {
-        vec3 N = normalize(r.origin+r.direction*t - sphereCenter);
-        FragColor = vec4(0.5*N.x+0.5, 0.5*N.y+0.5, 0.5*N.z+0.5,1.0);
+        vec3 P = r.origin+r.direction*t;
+        vec3 N = normalize(P- sphereCenter);
+
+        FragColor = vec4(computeColor(P, N),1.0);
     }
     
     
