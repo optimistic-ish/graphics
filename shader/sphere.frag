@@ -14,17 +14,29 @@ void main() {
 #define NO_OF_OBJECTS 3
 #define RENDER_DISTANCE 99999
 
+//material properties
+#define ROUGH_SURFACE 0
+#define METALLIC_SURFACE 1
+
+
 out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
 uniform vec2 iResolution; //Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
 
+
+struct MaterialProperties
+{
+    vec3  albedo;
+    int surfaceType;
+};
+
+
 struct Object {
     vec3 center;
     float radius;
-
-    vec3  albedo;
+    MaterialProperties material;
 };
 
 struct ray {
@@ -36,7 +48,7 @@ struct hit_record {
     vec3 p;
     vec3 normal;
 
-    vec3  albedo;
+    MaterialProperties material;
 };
 
 
@@ -44,7 +56,7 @@ Object objectList[NO_OF_OBJECTS];
 
 void initializeScene(int objectNo , Object obj)
 {
-    objectList[objectNo] = Object(obj.center, obj.radius, obj.albedo);
+    objectList[objectNo] = Object(obj.center, obj.radius, obj.material);
 }
 
 bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out hit_record rec) {
@@ -62,7 +74,8 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.t=temp;
             rec.p=r.origin+rec.t*r.direction;
             rec.normal=(rec.p-sphere.center)/sphere.radius;
-            rec.albedo=sphere.albedo;
+            rec.material.albedo = sphere.material.albedo;
+            rec.material.surfaceType = sphere.material.surfaceType;
             return true;
         }
         temp=(-b+sqrt(discriminant))/a;
@@ -71,7 +84,8 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.t=temp;
             rec.p=r.origin+rec.t*r.direction;
             rec.normal=(rec.p-sphere.center)/sphere.radius;
-            rec.albedo=sphere.albedo;
+            rec.material.albedo = sphere.material.albedo;
+            rec.material.surfaceType = sphere.material.surfaceType;
             return true;
         }
     }
@@ -119,20 +133,59 @@ vec3 random_in_unit_sphere(vec2 seed) {
     return hit_anything;
 }
 
+
+//DERIVE REFLECTED RAY FROM INCIDENT RAY
+//
+vec3 reflectRay(vec3 incidentRay, vec3 normalRay)
+{
+    return incidentRay - (2.0* dot(incidentRay,normalRay)*normalRay);
+}
+
+
+
+//Bidirectional scattering distribution function
 bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 attenuation, int seedVariability)
 {
-        vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
-        
-        // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
-        
-        vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere(coordSeed.xy / iResolution.xy);
+    int materialNature = isectInfo.material.surfaceType;
+        if(materialNature == ROUGH_SURFACE)
+        {
+            vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
 
-        nori.origin=isectInfo.p;
-        nori.direction=target-isectInfo.p;
+            // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
 
-        attenuation=isectInfo.albedo;
-        return true;
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere(coordSeed.xy / iResolution.xy);
+
+            nori.origin=isectInfo.p;
+            nori.direction=target-isectInfo.p;
+            attenuation=isectInfo.material.albedo;
+            return true;
+        }
+        else if( isectInfo.material.surfaceType == METALLIC_SURFACE)
+        {
+            nori.origin = isectInfo.p;
+            nori.direction = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
+            attenuation = isectInfo.material.albedo;
+
+            return (dot(nori.direction, isectInfo.normal) > 0.0f);
+        }
+    return false;
+
+            // vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
+
+            // // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
+
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere(coordSeed.xy / iResolution.xy);
+
+            // nori.origin=isectInfo.p;
+            // nori.direction=target-isectInfo.p;
+            // attenuation=isectInfo.material.albedo;
+            // return true;
+
 }
+
+
+
+
 vec3 skyColor(ray r)
 {
     vec3 unit_direction = normalize(r.direction);
@@ -158,7 +211,7 @@ vec3 rayColor(ray r) {
             ray nori;
             vec3 attenuation;
 
-            bool wasScattered=material_bsdf(rec,r,nori,attenuation, i);
+            bool wasScattered=material_bsdf(rec, r, nori, attenuation, i);
 
             r.origin= nori.origin;
             r.direction= nori.direction;
@@ -205,26 +258,31 @@ void main()
     r.origin = cameraPosition;
     vec3 try=vec3(screenCoords, -1.0) - cameraPosition;
     r.direction=(normalize(vec4(try, 0.0)) * rotationMatrix).xyz;
+
+
+    
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3( 0.0, 0.200000, 1.0);
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
-    vec3 albedo = vec3(0.2353, 0.2706, 0.3137);
-
-    Object obj = Object(sphereCenter, radiusNormalized, albedo);
+    MaterialProperties materialProp;
+    materialProp.albedo = vec3(0.2353, 0.2706, 0.3137);
+    materialProp.surfaceType = METALLIC_SURFACE;
+    Object obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(0, obj);
     
     sphereCenter = vec3( 0.75, 0.200000, 1.0);
     radiusNormalized=0.1;
-    albedo = vec3( 1.0, 0.465652, 0.665070);
-
-    obj = Object(sphereCenter, radiusNormalized, albedo);
+    materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
+    materialProp.surfaceType = METALLIC_SURFACE;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(1, obj);
     
     // Initialize background sphere (backgroundCenter with backgroundRadius)
-    albedo = vec3( 0.380012, 0.506085, 0.762437);
-    vec3 backgroundCenter=vec3(0.0,-2.7,0.0);
-    float backgroundRadius=2.8;
-    obj = Object(backgroundCenter, backgroundRadius, albedo);
+    materialProp.albedo = vec3( 0.380012, 0.506085, 0.762437);
+    materialProp.surfaceType = METALLIC_SURFACE;
+    vec3 backgroundCenter=vec3(0.0,-27,0.0);
+    float backgroundRadius=27;
+    obj = Object(backgroundCenter, backgroundRadius, materialProp);
     initializeScene(2, obj);
 
 
