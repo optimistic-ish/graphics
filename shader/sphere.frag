@@ -10,7 +10,7 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 64
+#define SAMPLING_DEPTH 100
 #define NO_OF_OBJECTS 3
 #define RENDER_DISTANCE 99999
 
@@ -78,17 +78,17 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
 
     return false;
 }
-
-float rand(vec2 co){
+vec2 co;
+float rand(){
     co.x =  fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
     co.y =  fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
     return co.x;
 }
 
 vec3 random_in_unit_sphere(vec2 seed) {
-    float phi = 2.0 * PI * rand(seed);
-    float cosTheta = 2.0 * rand(seed) - 1.0;
-    float u = rand(seed);
+    float phi = 2.0 * PI * rand();
+    float cosTheta = 2.0 * rand() - 1.0;
+    float u = rand();
 
     float theta = acos(cosTheta);
     float r = pow(u, 1.0 / 3.0);
@@ -219,6 +219,7 @@ void main()
 
     obj = Object(sphereCenter, radiusNormalized, albedo);
     initializeScene(1, obj);
+    
     // Initialize background sphere (backgroundCenter with backgroundRadius)
     albedo = vec3( 0.380012, 0.506085, 0.762437);
     vec3 backgroundCenter=vec3(0.0,-2.7,0.0);
@@ -226,6 +227,9 @@ void main()
     obj = Object(backgroundCenter, backgroundRadius, albedo);
     initializeScene(2, obj);
 
+
+
+    co.xy = gl_FragCoord.xy/iResolution.xy;
 
     vec3 fcolor= vec3(0.0f);
     
