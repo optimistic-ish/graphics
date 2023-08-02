@@ -10,7 +10,7 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 100
+#define SAMPLING_DEPTH 1000
 #define NO_OF_OBJECTS 3
 #define RENDER_DISTANCE 99999
 
@@ -30,6 +30,7 @@ struct MaterialProperties
 {
     vec3  albedo;
     int surfaceType;
+    float fuzz;
 };
 
 
@@ -76,6 +77,7 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.normal=(rec.p-sphere.center)/sphere.radius;
             rec.material.albedo = sphere.material.albedo;
             rec.material.surfaceType = sphere.material.surfaceType;
+            rec.material.fuzz = sphere.material.fuzz;
             return true;
         }
         temp=(-b+sqrt(discriminant))/a;
@@ -86,6 +88,7 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.normal=(rec.p-sphere.center)/sphere.radius;
             rec.material.albedo = sphere.material.albedo;
             rec.material.surfaceType = sphere.material.surfaceType;
+            rec.material.fuzz = sphere.material.fuzz;
             return true;
         }
     }
@@ -99,7 +102,7 @@ float rand(){
     return co.x;
 }
 
-vec3 random_in_unit_sphere(vec2 seed) {
+vec3 random_in_unit_sphere() {
     float phi = 2.0 * PI * rand();
     float cosTheta = 2.0 * rand() - 1.0;
     float u = rand();
@@ -153,7 +156,7 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
 
             // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
 
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere(coordSeed.xy / iResolution.xy);
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
 
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -163,7 +166,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         else if( isectInfo.material.surfaceType == METALLIC_SURFACE)
         {
             nori.origin = isectInfo.p;
-            nori.direction = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
+            vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
             attenuation = isectInfo.material.albedo;
 
             return (dot(nori.direction, isectInfo.normal) > 0.0f);
@@ -203,7 +207,7 @@ vec3 rayColor(ray r) {
 
         if(i == SAMPLING_DEPTH-1)
         {
-            col *= vec3(0.0);
+            col *= vec3(0.0, 0.0, 0.0);
             break;
         }
         if(intersectScene(r, 0.001, RENDER_DISTANCE, rec))
@@ -264,9 +268,13 @@ void main()
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3( 0.0, 0.200000, 1.0);
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
+    
+    float  mFuzz = 0.5;
+
     MaterialProperties materialProp;
     materialProp.albedo = vec3(0.2353, 0.2706, 0.3137);
     materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.fuzz = mFuzz;
     Object obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(0, obj);
     
@@ -274,12 +282,14 @@ void main()
     radiusNormalized=0.1;
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
     materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.fuzz = mFuzz-0.2f;
     obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(1, obj);
     
     // Initialize background sphere (backgroundCenter with backgroundRadius)
     materialProp.albedo = vec3( 0.380012, 0.506085, 0.762437);
-    materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.surfaceType = ROUGH_SURFACE;
+    materialProp.fuzz = mFuzz+0.3f;
     vec3 backgroundCenter=vec3(0.0,-27,0.0);
     float backgroundRadius=27;
     obj = Object(backgroundCenter, backgroundRadius, materialProp);
