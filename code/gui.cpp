@@ -12,7 +12,8 @@ float deltaTime = 0.0f;	// time between current frame and last frame
 float lastFrame = 0.0f;
 
 bool firstMouse = true;
-float yaw   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
+bool mouseTrigger=false;
+float yaw   = 0.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
 float pitch =  0.0f;
 float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
@@ -95,7 +96,7 @@ int windowCreation::windowInitialize()
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -127,18 +128,54 @@ void processInput(GLFWwindow *window)
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-        float cameraSpeed = static_cast<float>(2.5 * deltaTime);
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            cameraPos += cameraSpeed * cameraFront;
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            cameraPos -= cameraSpeed * cameraFront;
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        // float cameraSpeed = static_cast<float>(2.5 * deltaTime);
+    directionRotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0)), yaw, glm::vec3(0, 1, 0));
+	
+	glm::vec3 forward = glm::vec3(glm::vec4(0, 0, -1, 0) * (directionRotationMatrix));
+	
+	glm::vec3 up(0, 1, 0);
+	glm::vec3 right = glm::cross(forward, up);
+
+	glm::vec3 movementDirection(0);
+	float multiplier = 1;
+
+	if (glfwGetKey(window, GLFW_KEY_W)) {
+		movementDirection += forward;
+	}
+	if (glfwGetKey(window, GLFW_KEY_S)) {
+		movementDirection -= forward;
+	}
+	if (glfwGetKey(window, GLFW_KEY_D)) {
+		movementDirection += right;
+	}
+	if (glfwGetKey(window, GLFW_KEY_A)) {
+		movementDirection -= right;
+	}
+	if (glfwGetKey(window, GLFW_KEY_SPACE)) {
+		movementDirection += up;
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
+		movementDirection -= up;
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
+		multiplier = 5;
+	}
+
+
+	if (glm::length(movementDirection) > 0.0f) {
+		cameraPos += glm::normalize(movementDirection) * (float)deltaTime * (float)multiplier;
+		
+	}
         
         if(glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        {
+            mouseTrigger=!mouseTrigger;
+            if(mouseTrigger==false)
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            else
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        }
+            
     }
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
