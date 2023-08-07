@@ -10,7 +10,7 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 16
+#define SAMPLING_DEPTH 64
 #define NO_OF_OBJECTS 6
 #define RENDER_DISTANCE 99999
 
@@ -131,6 +131,14 @@ vec3 random_in_unit_sphere() {
     return vec3(x, y, z);
 }
 
+vec3 random_in_hemisphere(vec3 normal){
+    vec3 random_unit = normalize(random_in_unit_sphere());
+    if(dot(random_unit, normal) > 0.0)
+        return random_unit;
+    else
+        return -random_unit;
+}
+
 
  bool intersectScene(ray r, float t_min, float t_max, out hit_record rec)
 {
@@ -186,8 +194,11 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
 
             // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
 
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
 
+            //TRYING DIFFERENT DIFFUSION METHOD
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
             attenuation=isectInfo.material.albedo;
@@ -197,7 +208,10 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         {
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
+            
             nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            
             attenuation = isectInfo.material.albedo;
 
             return (dot(nori.direction, isectInfo.normal) > 0.0f);
@@ -205,7 +219,7 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         else if( isectInfo.material.surfaceType == DIELECTRIC)
         {
             nori.origin = isectInfo.p;
-            attenuation = vec3(1.0);
+            attenuation = vec3(1.0,1.0,1.0);
             float rRatio = (isectInfo.front_face)?1.0/isectInfo.material.refractive_index: isectInfo.material.refractive_index;
             
 
@@ -228,18 +242,6 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             return true;
         }
     return false;
-
-            // vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
-
-            // // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
-
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere(coordSeed.xy / iResolution.xy);
-
-            // nori.origin=isectInfo.p;
-            // nori.direction=target-isectInfo.p;
-            // attenuation=isectInfo.material.albedo;
-            // return true;
-
 }
 
 
@@ -260,11 +262,11 @@ vec3 rayColor(ray r) {
     for(int i=0;i<SAMPLING_DEPTH;i++){
         //nori = new origin ray info        
 
-        if(i == SAMPLING_DEPTH-1)
-        {
-            col *= vec3(0.0, 0.0, 0.0);
-            break;
-        }
+        // if(i == SAMPLING_DEPTH-1)
+        // {
+        //     col *= vec3(0.0, 0.0, 0.0);
+        //     break;
+        // }
         if(intersectScene(r, 0.001, RENDER_DISTANCE, rec))
         {
             ray nori;
@@ -318,10 +320,11 @@ void main()
     vec3 try=vec3(screenCoords, -1.0) - cameraPosition;
     r.direction=(normalize(vec4(try, 0.0)) * rotationMatrix).xyz;
 
-
+    //////TEMP TEMP TEMp
+    float y_offset = 0.03f;
     
     // Sphere properties (centered at the origin)
-    vec3 sphereCenter = vec3( 0.0, 0.200000, 1.0);
+    vec3 sphereCenter = vec3( 0.0, 0.200000 + y_offset, 1.0);
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
     
     float  mFuzz = 0.5;
@@ -336,7 +339,7 @@ void main()
     initializeScene(0, obj);
     
     //sphere 1
-    sphereCenter = vec3( 0.4,0.08,1.0f);
+    sphereCenter = vec3( 0.4,0.1,1.0f);
     radiusNormalized=0.1;
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
     materialProp.surfaceType = DIELECTRIC;
@@ -344,7 +347,7 @@ void main()
     obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(1, obj);
      //sphere 2
-    sphereCenter = vec3( 0.4,0.08,1.0f);
+    sphereCenter = vec3( 0.4,0.1,1.0f);
     radiusNormalized=-0.095;
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
     materialProp.surfaceType = DIELECTRIC;
@@ -353,7 +356,7 @@ void main()
     initializeScene(2, obj);
 
     //sphere 3
-    sphereCenter = vec3( 0.6, 0.05, 1.0f);
+    sphereCenter = vec3( 0.6, 0.1, 1.0f);
     radiusNormalized=0.1;
     materialProp.albedo = vec3(0.6157, 0.0, 0.7412);
     materialProp.surfaceType = ROUGH_SURFACE;
@@ -362,7 +365,7 @@ void main()
     initializeScene(3, obj);
 
     //sphere 4
-    sphereCenter = vec3( -0.4,0.05,1.0f);
+    sphereCenter = vec3( -0.4,0.1,1.0f);
     radiusNormalized=0.1;
     materialProp.albedo = vec3(0.549, 0.0, 1.0);
     materialProp.surfaceType = METALLIC_SURFACE;
@@ -386,13 +389,16 @@ void main()
     vec3 fcolor= vec3(0.0f);
     
 
-    for (int i = 0; i < 20; i++) {
+
+    int SAMPLES_PER_PIXEL = 400;
+    for (int i = 0; i < SAMPLES_PER_PIXEL; i++) {
         fcolor += vec3(rayColor(r));
 
         // vec2 tempSeed = vec2(gl_FragCoord.x + i, gl_FragCoord.y + i);
         // r.origin.x += rand(tempSeed.xy/iResolution.xy);
     }
-    fcolor /= 20;
+    fcolor /= SAMPLES_PER_PIXEL;
+    // fcolor = vec3(rayColor(r));
 
     //gamma correction
     fcolor = vec3( sqrt(fcolor.x), sqrt(fcolor.y), sqrt(fcolor.z) );
