@@ -10,14 +10,14 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 1000
-#define NO_OF_OBJECTS 3
+#define SAMPLING_DEPTH 16
+#define NO_OF_OBJECTS 6
 #define RENDER_DISTANCE 99999
 
 //material properties
 #define ROUGH_SURFACE 0
 #define METALLIC_SURFACE 1
-
+#define DIELECTRIC 2
 
 out vec4 FragColor;
 uniform float sphereRadius; // Adjust the sphere radius as needed
@@ -31,6 +31,7 @@ struct MaterialProperties
     vec3  albedo;
     int surfaceType;
     float fuzz;
+    float refractive_index;
 };
 
 
@@ -50,6 +51,8 @@ struct hit_record {
     vec3 normal;
 
     MaterialProperties material;
+
+    bool front_face;
 };
 
 
@@ -75,9 +78,16 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.t=temp;
             rec.p=r.origin+rec.t*r.direction;
             rec.normal=(rec.p-sphere.center)/sphere.radius;
+
+            //For backface and frontface recognition
+            rec.front_face = (dot(rec.normal, r.direction) < 0)? true:false;
+
+            rec.normal = (rec.front_face)?rec.normal: -rec.normal;
+
             rec.material.albedo = sphere.material.albedo;
             rec.material.surfaceType = sphere.material.surfaceType;
             rec.material.fuzz = sphere.material.fuzz;
+            rec.material.refractive_index = sphere.material.refractive_index;
             return true;
         }
         temp=(-b+sqrt(discriminant))/a;
@@ -86,9 +96,13 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.t=temp;
             rec.p=r.origin+rec.t*r.direction;
             rec.normal=(rec.p-sphere.center)/sphere.radius;
+
+            rec.front_face = (dot(rec.normal, r.direction) < 0)? true:false;
+            rec.normal = (rec.front_face)?rec.normal: -rec.normal;
             rec.material.albedo = sphere.material.albedo;
             rec.material.surfaceType = sphere.material.surfaceType;
             rec.material.fuzz = sphere.material.fuzz;
+            rec.material.refractive_index = sphere.material.refractive_index;
             return true;
         }
     }
@@ -145,6 +159,22 @@ vec3 reflectRay(vec3 incidentRay, vec3 normalRay)
 }
 
 
+//ASSUMING NORMALIZED VALUES ARE SENT
+vec3 refraction(vec3 rDirection, vec3 normal, float u1_u2)
+{
+    float cosTheta = clamp(dot(-rDirection, normal), 0.0, 1.0f);
+    vec3 refrac_perpendicular = u1_u2 * (rDirection + cosTheta*normal);
+    vec3 refrac_parallel = -sqrt(abs(1.0-dot(refrac_perpendicular,refrac_perpendicular)))*normal;
+    return refrac_perpendicular + refrac_parallel;
+}
+
+//Schlick's Approximation for angles reflection
+float schlickReflectance(float cosTheta, float refIndex)
+{
+    float r0 = (1-refIndex)/(1+refIndex);
+    r0 = pow(r0,2.0);
+    return r0 + (1-r0)*pow((1-cosTheta),5.0);
+}
 
 //Bidirectional scattering distribution function
 bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 attenuation, int seedVariability)
@@ -172,6 +202,31 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
 
             return (dot(nori.direction, isectInfo.normal) > 0.0f);
         }
+        else if( isectInfo.material.surfaceType == DIELECTRIC)
+        {
+            nori.origin = isectInfo.p;
+            attenuation = vec3(1.0);
+            float rRatio = (isectInfo.front_face)?1.0/isectInfo.material.refractive_index: isectInfo.material.refractive_index;
+            
+
+            //if directions and normal are already normalized remove the normalization part
+            vec3 unitRayDir = normalize(origin.direction);
+            vec3 unitNormal = normalize(isectInfo.normal);
+
+            float cosTheta = clamp(dot(-unitRayDir, unitNormal), 0.0, 1.0);
+            float sinTheta = sqrt(1.0 - cosTheta*cosTheta);
+
+            bool cannotRefract = rRatio * sinTheta > 1.0;
+
+            if(cannotRefract || (schlickReflectance(cosTheta, rRatio) > rand())){
+                nori.direction = reflectRay(unitRayDir, unitNormal);
+            }
+            else{
+                nori.direction = refraction(unitRayDir, unitNormal, rRatio);
+            }
+
+            return true;
+        }
     return false;
 
             // vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
@@ -194,7 +249,7 @@ vec3 skyColor(ray r)
 {
     vec3 unit_direction = normalize(r.direction);
     float t = 0.5 * (unit_direction.y + 1.0);
-    return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+    return (1.0 - t) * vec3(0.4627, 0.651, 1.0) + t * vec3(1.0, 0.9647, 0.4941);
 }
 
 vec3 rayColor(ray r) {
@@ -270,30 +325,59 @@ void main()
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
     
     float  mFuzz = 0.5;
+    float refractive_index = 1.5;
 
     MaterialProperties materialProp;
-    materialProp.albedo = vec3(0.2353, 0.2706, 0.3137);
-    materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.albedo = vec3(0.0627, 0.0, 0.9608);
+    materialProp.surfaceType = DIELECTRIC;
     materialProp.fuzz = mFuzz;
+    materialProp.refractive_index = refractive_index;
     Object obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(0, obj);
     
-    sphereCenter = vec3( 0.75, 0.200000, 1.0);
+    //sphere 1
+    sphereCenter = vec3( 0.4,0.08,1.0f);
     radiusNormalized=0.1;
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
-    materialProp.surfaceType = METALLIC_SURFACE;
-    materialProp.fuzz = mFuzz-0.2f;
+    materialProp.surfaceType = DIELECTRIC;
+    materialProp.fuzz = 0.25f;
     obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(1, obj);
-    
+     //sphere 2
+    sphereCenter = vec3( 0.4,0.08,1.0f);
+    radiusNormalized=-0.095;
+    materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
+    materialProp.surfaceType = DIELECTRIC;
+    materialProp.fuzz = 0.25f;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
+    initializeScene(2, obj);
+
+    //sphere 3
+    sphereCenter = vec3( 0.6, 0.05, 1.0f);
+    radiusNormalized=0.1;
+    materialProp.albedo = vec3(0.6157, 0.0, 0.7412);
+    materialProp.surfaceType = ROUGH_SURFACE;
+    materialProp.fuzz = mFuzz-0.3f;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
+    initializeScene(3, obj);
+
+    //sphere 4
+    sphereCenter = vec3( -0.4,0.05,1.0f);
+    radiusNormalized=0.1;
+    materialProp.albedo = vec3(0.549, 0.0, 1.0);
+    materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.fuzz = 0.2f;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
+    initializeScene(4, obj);
+
     // Initialize background sphere (backgroundCenter with backgroundRadius)
-    materialProp.albedo = vec3( 0.380012, 0.506085, 0.762437);
+    materialProp.albedo = vec3(0.5);
     materialProp.surfaceType = ROUGH_SURFACE;
     materialProp.fuzz = mFuzz+0.3f;
-    vec3 backgroundCenter=vec3(0.0,-27,0.0);
-    float backgroundRadius=27;
+    vec3 backgroundCenter=vec3(0.0,-1000,0.0);
+    float backgroundRadius=1000;
     obj = Object(backgroundCenter, backgroundRadius, materialProp);
-    initializeScene(2, obj);
+    initializeScene(NO_OF_OBJECTS-1, obj);
 
 
 
