@@ -10,8 +10,8 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 64
-#define NO_OF_OBJECTS 6
+#define SAMPLING_DEPTH 42
+#define NO_OF_OBJECTS 7
 #define RENDER_DISTANCE 99999
 
 //material properties
@@ -262,11 +262,11 @@ vec3 rayColor(ray r) {
     for(int i=0;i<SAMPLING_DEPTH;i++){
         //nori = new origin ray info        
 
-        // if(i == SAMPLING_DEPTH-1)
-        // {
-        //     col *= vec3(0.0, 0.0, 0.0);
-        //     break;
-        // }
+        if(i == SAMPLING_DEPTH-1)
+        {
+            col *= vec3(0.0, 0.0, 0.0);
+            break;
+        }
         if(intersectScene(r, 0.001, RENDER_DISTANCE, rec))
         {
             ray nori;
@@ -373,6 +373,14 @@ void main()
     obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(4, obj);
 
+  //sphere 5
+    sphereCenter = vec3( 0.2,0.1,1.0f);
+    radiusNormalized=0.1;
+    materialProp.albedo = vec3(1.0, 1.0, 1.0);
+    materialProp.surfaceType = METALLIC_SURFACE;
+    materialProp.fuzz = 0.05f;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
+    initializeScene(5, obj);
     // Initialize background sphere (backgroundCenter with backgroundRadius)
     materialProp.albedo = vec3(0.5);
     materialProp.surfaceType = ROUGH_SURFACE;
@@ -390,7 +398,7 @@ void main()
     
 
 
-    int SAMPLES_PER_PIXEL = 400;
+    int SAMPLES_PER_PIXEL = 120;
     for (int i = 0; i < SAMPLES_PER_PIXEL; i++) {
         fcolor += vec3(rayColor(r));
 
