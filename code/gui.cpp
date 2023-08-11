@@ -1,4 +1,5 @@
 #include "gui.h"
+#include <string>
 
 
 unsigned int SCR_WIDTH=800;
@@ -63,7 +64,13 @@ namespace GUI {
             ImGui::Text("Hello from control window!");
             if (ImGui::Button("Close Me"))
                 show_another_window = false;
-            ImGui::SliderFloat("radius",radiusValue,100.0f, 450.0f);
+            for(int i=0;i<5;i++)
+            {
+                std::string sliderID="radius";
+                sliderID.append(std::to_string(i));
+                ImGui::SliderFloat(sliderID.c_str(),&radiusValue[i],100.0f, 450.0f);
+            }
+                
             ImGui::End();
         }
     }
@@ -79,14 +86,14 @@ namespace GUI {
             ImGui::End();
         }
     }
-    void render(bool &windowDraw, float *radiusValue, bool &print ) {
-        bool showWindow=true;
+    void render(bool *windowDraw, float *radiusValue, bool &print ) {
+        
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-        windowUI(windowDraw, radiusValue);
-		ImageUI(showWindow, print);
+        windowUI(windowDraw[0], radiusValue);
+		ImageUI(windowDraw[1], print);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

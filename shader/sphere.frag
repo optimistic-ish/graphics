@@ -20,7 +20,8 @@ void main() {
 #define DIELECTRIC 2
 
 out vec4 FragColor;
-uniform float sphereRadius; // Adjust the sphere radius as needed
+uniform float sphereRadius[5]; // Adjust the sphere radius as needed
+//uniform float sphereRadius1;
 uniform vec2 iResolution; //Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
@@ -346,7 +347,7 @@ void main()
     
     // Sphere properties (centered at the origin)
     vec3 sphereCenter = vec3( 0.0, 0.0500000 + y_offset, 1.0);
-    float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
+    float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
 
 
     //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
@@ -365,7 +366,7 @@ void main()
     
     //sphere 1
     sphereCenter = vec3( 0.4,0.1,1.0f);
-    radiusNormalized=0.1;
+    radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
     materialProp.surfaceType = DIELECTRIC;
     materialProp.fuzz = 0.25f;
@@ -373,7 +374,7 @@ void main()
     initializeScene(1, obj);
      //sphere 2
     sphereCenter = vec3( 0.4,0.1,1.0f);
-    radiusNormalized=-0.095;
+    radiusNormalized-=0.005;
     materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
     materialProp.surfaceType = DIELECTRIC;
     materialProp.fuzz = 0.25f;
@@ -382,7 +383,7 @@ void main()
 
     //sphere 3
     sphereCenter = vec3( 0.6, 0.1, 1.0f);
-    radiusNormalized=0.1;
+    radiusNormalized=((3.1415)*sphereRadius[2]*sphereRadius[2])/(iResolution.x*iResolution.y);
     materialProp.albedo = vec3(0.1922, 0.8588, 0.6588);
     materialProp.surfaceType = ROUGH_SURFACE;
     materialProp.fuzz = mFuzz-0.3f;
@@ -391,7 +392,7 @@ void main()
 
     //sphere 4
     sphereCenter = vec3( -0.4,0.1,1.0f);
-    radiusNormalized=0.1;
+    radiusNormalized=((3.1415)*sphereRadius[3]*sphereRadius[3])/(iResolution.x*iResolution.y);
     materialProp.albedo = vec3(0.8196, 0.6353, 0.9725);
     materialProp.surfaceType = METALLIC_SURFACE;
     materialProp.fuzz = 0.2f;
@@ -400,7 +401,7 @@ void main()
 
   //sphere 5
     sphereCenter = vec3( 0.2,0.1,1.0f);
-    radiusNormalized=0.1;
+    radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
     materialProp.albedo = vec3(1.0, 1.0, 1.0);
     materialProp.surfaceType = METALLIC_SURFACE;
     materialProp.fuzz = 0.05f;

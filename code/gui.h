@@ -49,6 +49,6 @@ namespace GUI {
 	void init(GLFWwindow* window);
 	void cleanup();
 
-	void render(bool &draw, float *radiusValue,bool &print);
+	void render(bool *draw, float *radiusValue,bool &print);
 };
 

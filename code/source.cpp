@@ -67,12 +67,13 @@ int main()
     
     window.windowInitialize();
     GUI::init(window.window);
-    bool show_another_window=true;
+    int widgetSize=2;
+    bool showWindow[2]={true,true};
     bool print=false;
     // -----------
-
     
-    float radius= 300;
+    
+    float radius[5]= {100,100,100,100,100};
     
     pointSetUp(s1);    
     s1.useShader();    
@@ -93,9 +94,16 @@ int main()
         unsigned int resID = glGetUniformLocation(s1.ID, "iResolution");        
         glUniform2f(resID, (float)SCR_WIDTH,(float)SCR_HEIGHT);
 
-        unsigned int radvID = glGetUniformLocation(s1.ID, "sphereRadius");
-        glUniform1f(radvID, radius); 
+        // for(int i=0;i<2;i++)
+        // {
+        //     std::string radiusID="sphereRadius";
+        //     radiusID.append(std::to_string(i));
+        //     unsigned int radvID = glGetUniformLocation(s1.ID, radiusID.c_str());            
+        //     glUniform1f(radvID, radius[i]);
+        // }
 
+        glUniform1fv(glGetUniformLocation(s1.ID,"sphereRadius"),5,radius);
+                
         unsigned int cameraID = glGetUniformLocation(s1.ID, "cameraPosition");
         glUniform3fv(cameraID,1, glm::value_ptr(cameraPos)); 
 
@@ -111,12 +119,15 @@ int main()
         // render
         // ------
         
-        GUI::render(show_another_window,&radius, print);
+
+        GUI::render(showWindow, radius, print);
+
         if(print)
         {
             saveImage("imageSaved.png",window.window);
             std::cout<<"Image saved"<<std::endl;
         }
+        
             
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
