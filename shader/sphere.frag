@@ -10,8 +10,8 @@ void main() {
 #version 330 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 42
-#define NO_OF_OBJECTS 7
+#define SAMPLING_DEPTH 16
+#define NO_OF_OBJECTS 8
 #define RENDER_DISTANCE 99999
 
 //material properties
@@ -32,6 +32,8 @@ struct MaterialProperties
     int surfaceType;
     float fuzz;
     float refractive_index;
+
+    bool isLightSource;
 };
 
 
@@ -53,6 +55,7 @@ struct hit_record {
     MaterialProperties material;
 
     bool front_face;
+    // bool didHitLight;
 };
 
 
@@ -88,6 +91,8 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.material.surfaceType = sphere.material.surfaceType;
             rec.material.fuzz = sphere.material.fuzz;
             rec.material.refractive_index = sphere.material.refractive_index;
+
+            rec.material.isLightSource = sphere.material.isLightSource;
             return true;
         }
         temp=(-b+sqrt(discriminant))/a;
@@ -103,6 +108,8 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.material.surfaceType = sphere.material.surfaceType;
             rec.material.fuzz = sphere.material.fuzz;
             rec.material.refractive_index = sphere.material.refractive_index;
+            
+            rec.material.isLightSource = sphere.material.isLightSource;
             return true;
         }
     }
@@ -153,6 +160,11 @@ vec3 random_in_hemisphere(vec3 normal){
             hit_anything   = true;
             closest_so_far = temp_rec.t;
             rec            = temp_rec;
+
+            // //record if the ray hit a light source
+            // if(temp_rec.material.isLightSource){
+            //     rec.didHitLight
+            // }
         }
     }
     return hit_anything;
@@ -262,12 +274,9 @@ vec3 rayColor(ray r) {
     for(int i=0;i<SAMPLING_DEPTH;i++){
         //nori = new origin ray info        
 
-        if(i == SAMPLING_DEPTH-1)
-        {
-            col *= vec3(0.0, 0.0, 0.0);
-            break;
-        }
-        if(intersectScene(r, 0.001, RENDER_DISTANCE, rec))
+        
+        bool didIntersectScene = intersectScene(r, 0.001, RENDER_DISTANCE, rec) ;
+        if(didIntersectScene && !rec.material.isLightSource)
         {
             ray nori;
             vec3 attenuation;
@@ -279,15 +288,26 @@ vec3 rayColor(ray r) {
 
             if(wasScattered)
                 col*=attenuation;
-            else
-            {
-                col*=vec3(0.f,0.f,0.f);
-                break;
-            }
+            // else
+            // {
+            //     col*=vec3(0.f,0.f,0.f);
+            //     break;
+            // }
+        }
+        else if(didIntersectScene && rec.material.isLightSource)
+        {
+            break;
         }
         else
         {
-            col*=skyColor(r);
+            col *= vec3(0.0);
+            // col*=skyColor(r);
+            break;
+        }
+        if(i == SAMPLING_DEPTH-1)
+        {
+
+            col *= vec3(0.0, 0.0, 0.0);
             break;
         }
     }
@@ -317,6 +337,7 @@ void main()
     //>>>> CAMERA CHANGES
     ray r;
     r.origin = cameraPosition;
+
     vec3 try=vec3(screenCoords, -1.0) - cameraPosition;
     r.direction=(normalize(vec4(try, 0.0)) * rotationMatrix).xyz;
 
@@ -324,17 +345,21 @@ void main()
     float y_offset = 0.03f;
     
     // Sphere properties (centered at the origin)
-    vec3 sphereCenter = vec3( 0.0, 0.200000 + y_offset, 1.0);
+    vec3 sphereCenter = vec3( 0.0, 0.0500000 + y_offset, 1.0);
     float radiusNormalized=((3.1415)*sphereRadius*sphereRadius)/(iResolution.x*iResolution.y);
-    
+
+
+    //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
     float  mFuzz = 0.5;
     float refractive_index = 1.5;
+    bool isLightSource = false;
 
-    MaterialProperties materialProp;
-    materialProp.albedo = vec3(0.0627, 0.0, 0.9608);
+ MaterialProperties materialProp;
+    materialProp.albedo = vec3(1.0, 1.0, 1.0);
     materialProp.surfaceType = DIELECTRIC;
     materialProp.fuzz = mFuzz;
     materialProp.refractive_index = refractive_index;
+    materialProp.isLightSource = isLightSource;
     Object obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(0, obj);
     
@@ -358,7 +383,7 @@ void main()
     //sphere 3
     sphereCenter = vec3( 0.6, 0.1, 1.0f);
     radiusNormalized=0.1;
-    materialProp.albedo = vec3(0.6157, 0.0, 0.7412);
+    materialProp.albedo = vec3(0.1922, 0.8588, 0.6588);
     materialProp.surfaceType = ROUGH_SURFACE;
     materialProp.fuzz = mFuzz-0.3f;
     obj = Object(sphereCenter, radiusNormalized, materialProp);
@@ -367,7 +392,7 @@ void main()
     //sphere 4
     sphereCenter = vec3( -0.4,0.1,1.0f);
     radiusNormalized=0.1;
-    materialProp.albedo = vec3(0.549, 0.0, 1.0);
+    materialProp.albedo = vec3(0.8196, 0.6353, 0.9725);
     materialProp.surfaceType = METALLIC_SURFACE;
     materialProp.fuzz = 0.2f;
     obj = Object(sphereCenter, radiusNormalized, materialProp);
@@ -381,14 +406,28 @@ void main()
     materialProp.fuzz = 0.05f;
     obj = Object(sphereCenter, radiusNormalized, materialProp);
     initializeScene(5, obj);
+
+    
+    sphereCenter = vec3( 0.0, 0.7, 1.0);
+    radiusNormalized=0.5;
+    materialProp.albedo = vec3(0.0627, 0.0, 0.9608);
+    materialProp.surfaceType = DIELECTRIC;
+    materialProp.fuzz = mFuzz;
+    materialProp.refractive_index = refractive_index;
+    materialProp.isLightSource = !isLightSource;
+    obj = Object(sphereCenter, radiusNormalized, materialProp);
+    initializeScene(6, obj);
+
     // Initialize background sphere (backgroundCenter with backgroundRadius)
     materialProp.albedo = vec3(0.5);
     materialProp.surfaceType = ROUGH_SURFACE;
     materialProp.fuzz = mFuzz+0.3f;
+    materialProp.isLightSource = false;
     vec3 backgroundCenter=vec3(0.0,-1000,0.0);
     float backgroundRadius=1000;
     obj = Object(backgroundCenter, backgroundRadius, materialProp);
     initializeScene(NO_OF_OBJECTS-1, obj);
+
 
 
 
@@ -398,15 +437,11 @@ void main()
     
 
 
-    int SAMPLES_PER_PIXEL = 120;
+    int SAMPLES_PER_PIXEL = 10;
     for (int i = 0; i < SAMPLES_PER_PIXEL; i++) {
         fcolor += vec3(rayColor(r));
-
-        // vec2 tempSeed = vec2(gl_FragCoord.x + i, gl_FragCoord.y + i);
-        // r.origin.x += rand(tempSeed.xy/iResolution.xy);
     }
     fcolor /= SAMPLES_PER_PIXEL;
-    // fcolor = vec3(rayColor(r));
 
     //gamma correction
     fcolor = vec3( sqrt(fcolor.x), sqrt(fcolor.y), sqrt(fcolor.z) );
