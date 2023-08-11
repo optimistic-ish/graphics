@@ -67,13 +67,26 @@ namespace GUI {
             ImGui::End();
         }
     }
-    void render(bool &windowDraw, float *radiusValue ) {
+    void ImageUI(bool &showWindow, bool &print)
+    {
+        if(showWindow)
+        {
+            ImGui::Begin("Save Image", &showWindow);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            ImGui::Text("Print the ray traced image");
+            if (ImGui::Button("print"))
+                print=!print;
+            
+            ImGui::End();
+        }
+    }
+    void render(bool &windowDraw, float *radiusValue, bool &print ) {
+        bool showWindow=true;
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
         windowUI(windowDraw, radiusValue);
-		
+		ImageUI(showWindow, print);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -180,39 +193,43 @@ void processInput(GLFWwindow *window)
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
-    float xpos = static_cast<float>(xposIn);
-    float ypos = static_cast<float>(yposIn);
-
-    if (firstMouse)
+    if(mouseTrigger)
     {
+
+        float xpos = static_cast<float>(xposIn);
+        float ypos = static_cast<float>(yposIn);
+
+        if (firstMouse)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = ypos -lastY ; // reversed since y-coordinates go from bottom to top
         lastX = xpos;
         lastY = ypos;
-        firstMouse = false;
+
+        float sensitivity = 0.002f; // change this value to your liking
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+
+        yaw += xoffset;
+        pitch += yoffset;
+
+        // make sure that when pitch is out of bounds, screen doesn't get flipped
+        if (pitch > 89.0f)
+            pitch = 89.0f;
+        if (pitch < -89.0f)
+            pitch = -89.0f;
+
+        // glm::vec3 front;
+        // front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        // front.y = sin(glm::radians(pitch));
+        // front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        // cameraFront = glm::normalize(front);
+        // cameraPos += (glm::normalize(glm::cross(cameraFront, cameraUp))) * 0.01f;
+        directionRotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0)), yaw, glm::vec3(0, 1, 0));
     }
-
-    float xoffset = xpos - lastX;
-    float yoffset = ypos -lastY ; // reversed since y-coordinates go from bottom to top
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.002f; // change this value to your liking
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    // make sure that when pitch is out of bounds, screen doesn't get flipped
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    // glm::vec3 front;
-    // front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    // front.y = sin(glm::radians(pitch));
-    // front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    // cameraFront = glm::normalize(front);
-    // cameraPos += (glm::normalize(glm::cross(cameraFront, cameraUp))) * 0.01f;
-    directionRotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0)), yaw, glm::vec3(0, 1, 0));
 }

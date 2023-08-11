@@ -3,6 +3,11 @@
 #include "gui.h"
 #include "shader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image.h"
+#include "stb_image_write.h"
+
 const float vertices[] = {
     -1.0f,  1.0f,
      1.0f,  1.0f,
@@ -11,6 +16,21 @@ const float vertices[] = {
     -1.0f, -1.0f,
      1.0f, -1.0f	
 };
+void saveImage(const char* filepath, GLFWwindow* w) 
+{
+    int width, height;
+    glfwGetFramebufferSize(w, &width, &height);
+    GLsizei nrChannels = 3;
+    GLsizei stride = nrChannels * width;
+    stride += (stride % 4) ? (4 - stride % 4) : 0;
+    GLsizei bufferSize = stride * height;
+    unsigned char* byteBuffer = new unsigned char[bufferSize];
+    glPixelStorei(GL_PACK_ALIGNMENT, 4);
+    glReadBuffer(GL_FRONT);
+    glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, byteBuffer);
+    stbi_flip_vertically_on_write(true);
+    stbi_write_png(filepath, width, height, nrChannels, byteBuffer, stride);
+}
 unsigned int VAO,VBO,EBO;
 void pointSetUp(shader &shader)
 {   
@@ -48,6 +68,7 @@ int main()
     window.windowInitialize();
     GUI::init(window.window);
     bool show_another_window=true;
+    bool print=false;
     // -----------
 
     
@@ -90,7 +111,13 @@ int main()
         // render
         // ------
         
-        GUI::render(show_another_window,&radius);
+        GUI::render(show_another_window,&radius, print);
+        if(print)
+        {
+            saveImage("imageSaved.png",window.window);
+            std::cout<<"Image saved"<<std::endl;
+        }
+            
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
