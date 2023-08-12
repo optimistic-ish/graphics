@@ -21,7 +21,7 @@ void main() {
 
 out vec4 FragColor;
 uniform float sphereRadius[5]; // Adjust the sphere radius as needed
-//uniform float sphereRadius1;
+// uniform vec3 spherecenter[5];
 uniform vec2 iResolution; //Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
@@ -277,7 +277,7 @@ vec3 rayColor(ray r) {
 
         
         bool didIntersectScene = intersectScene(r, 0.001, RENDER_DISTANCE, rec) ;
-        if(didIntersectScene && !rec.material.isLightSource)
+        if(didIntersectScene)
         {
             ray nori;
             vec3 attenuation;
@@ -295,14 +295,14 @@ vec3 rayColor(ray r) {
             //     break;
             // }
         }
-        else if(didIntersectScene && rec.material.isLightSource)
+        else if(didIntersectScene && false)
         {
             break;
         }
         else
         {
-            col *= vec3(0.0);
-            // col*=skyColor(r);
+            // col *= vec3(0.0);
+            col*=skyColor(r);
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -438,7 +438,7 @@ void main()
     
 
 
-    int SAMPLES_PER_PIXEL = 10;
+    int SAMPLES_PER_PIXEL = 50;
     for (int i = 0; i < SAMPLES_PER_PIXEL; i++) {
         fcolor += vec3(rayColor(r));
     }

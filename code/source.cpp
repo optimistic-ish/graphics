@@ -74,6 +74,7 @@ int main()
     
     
     float radius[5]= {100,100,100,100,100};
+    float center[15]={0.0,0.05,1.0,0.4,0.1,1.0,0.6, 0.1, 1.0,-0.4,0.1,1.0,0.2,0.1,1.0};
     
     pointSetUp(s1);    
     s1.useShader();    
@@ -111,28 +112,32 @@ int main()
         glUniformMatrix4fv(directionID,1, GL_TRUE,glm::value_ptr(directionRotationMatrix));
         // std::cout<<random.x<<" "<<random.y<<std::endl; 
         
-       
 
         glBindVertexArray(VAO);
         glDrawArrays(GL_TRIANGLES,0,6);
-        
-        // render
-        // ------
-        
 
-        GUI::render(showWindow, radius, print);
 
         if(print)
         {
+            print=!print;
+            showWindow[0]=false;showWindow[1]=false;
+            GUI::render(showWindow, radius, print,center);            
+            glfwSwapBuffers(window.window);            
             saveImage("imageSaved.png",window.window);
             std::cout<<"Image saved"<<std::endl;
+            showWindow[0]=true;showWindow[1]=true;
         }
-        
-            
+        else
+        {
+            GUI::render(showWindow, radius, print,center);
+            glfwSwapInterval(1);
+            glfwSwapBuffers(window.window);  
+
+        }            
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window.window);
+        
         glfwPollEvents();
     }
     

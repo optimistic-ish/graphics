@@ -55,19 +55,22 @@ namespace GUI {
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
-    void windowUI(bool &show_another_window, float *radiusValue)
+    void windowUI(bool &show_another_window, float *radiusValue,float *centerValue)
     {        
         
         if (show_another_window)
         {
             ImGui::Begin("Control menu", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
             ImGui::Text("Hello from control window!");
+            std::string temp="";
+            ImGui::Text((temp.append(std::to_string(ImGui::GetIO().Framerate)).c_str()));
             if (ImGui::Button("Close Me"))
                 show_another_window = false;
             for(int i=0;i<5;i++)
             {
                 std::string sliderID="radius";
                 sliderID.append(std::to_string(i));
+                ImGui::InputFloat3("Center",centerValue);
                 ImGui::SliderFloat(sliderID.c_str(),&radiusValue[i],100.0f, 450.0f);
             }
                 
@@ -86,13 +89,13 @@ namespace GUI {
             ImGui::End();
         }
     }
-    void render(bool *windowDraw, float *radiusValue, bool &print ) {
+    void render(bool *windowDraw, float *radiusValue, bool &print , float *center) {
         
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-        windowUI(windowDraw[0], radiusValue);
+        windowUI(windowDraw[0], radiusValue, center);
 		ImageUI(windowDraw[1], print);
 
 		ImGui::Render();
