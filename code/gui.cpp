@@ -19,6 +19,8 @@ float pitch =  0.0f;
 float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
 float fov   =  45.0f;
+bool stashPreviousRender = false;
+
 glm::mat4 directionRotationMatrix(1);
 
 
@@ -107,7 +109,7 @@ namespace GUI {
 int windowCreation::windowInitialize()
 {    
     glfwInit();
-    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "RAY_TRACER", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -132,62 +134,73 @@ int windowCreation::windowInitialize()
 }
 
 void processInput(GLFWwindow *window)
-    {
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
-
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-        // float cameraSpeed = static_cast<float>(2.5 * deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+
+    // float cameraSpeed = static_cast<float>(2.5 * deltaTime);
     directionRotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0)), yaw, glm::vec3(0, 1, 0));
-	
-	glm::vec3 forward = glm::vec3(glm::vec4(0, 0, -1, 0) * (directionRotationMatrix));
-	
-	glm::vec3 up(0, 1, 0);
-	glm::vec3 right = glm::cross(forward, up);
 
-	glm::vec3 movementDirection(0);
-	float multiplier = 1;
+    glm::vec3 forward = glm::vec3(glm::vec4(0, 0, -1, 0) * (directionRotationMatrix));
 
-	if (glfwGetKey(window, GLFW_KEY_W)) {
-		movementDirection += forward;
-	}
-	if (glfwGetKey(window, GLFW_KEY_S)) {
-		movementDirection -= forward;
-	}
-	if (glfwGetKey(window, GLFW_KEY_D)) {
-		movementDirection += right;
-	}
-	if (glfwGetKey(window, GLFW_KEY_A)) {
-		movementDirection -= right;
-	}
-	if (glfwGetKey(window, GLFW_KEY_SPACE)) {
-		movementDirection += up;
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT)) {
-		movementDirection -= up;
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL)) {
-		multiplier = 5;
-	}
+    glm::vec3 up(0, 1, 0);
+    glm::vec3 right = glm::cross(forward, up);
 
+    glm::vec3 movementDirection(0);
+    float multiplier = 1;
 
-	if (glm::length(movementDirection) > 0.0f) {
-		cameraPos += glm::normalize(movementDirection) * (float)deltaTime * (float)multiplier;
-		
-	}
-        
-        if(glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
-        {
-            mouseTrigger=!mouseTrigger;
-            if(mouseTrigger==false)
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-            else
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
-            
+    if (glfwGetKey(window, GLFW_KEY_W))
+    {
+        movementDirection += forward;
+        stashPreviousRender = true;
     }
+    if (glfwGetKey(window, GLFW_KEY_S))
+    {
+        movementDirection -= forward;
+        stashPreviousRender = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D))
+    {
+        movementDirection += right;
+        stashPreviousRender = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A))
+    {
+        movementDirection -= right;
+        stashPreviousRender = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_SPACE))
+    {
+        movementDirection += up;
+        stashPreviousRender = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT))
+    {
+        movementDirection -= up;
+        stashPreviousRender = true;
+    }
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL))
+    {
+        multiplier = 5;
+    }
+
+    if (glm::length(movementDirection) > 0.0f)
+    {
+        cameraPos += glm::normalize(movementDirection) * (float)deltaTime * (float)multiplier;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+    {
+        mouseTrigger = !mouseTrigger;
+        if (mouseTrigger == false)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        else
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+}
 
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
 {
@@ -229,5 +242,6 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn)
         // cameraFront = glm::normalize(front);
         // cameraPos += (glm::normalize(glm::cross(cameraFront, cameraUp))) * 0.01f;
         directionRotationMatrix = glm::rotate(glm::rotate(glm::mat4(1), pitch, glm::vec3(1, 0, 0)), yaw, glm::vec3(0, 1, 0));
+        stashPreviousRender = true;
     }
 }

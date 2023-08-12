@@ -149,13 +149,16 @@ int main()
         glUniformMatrix4fv(directionID, 1, GL_TRUE, glm::value_ptr(directionRotationMatrix));
         // std::cout<<random.x<<" "<<random.y<<std::endl;
 
-        glUniform1i(unitsOfFrameLoc, unitsOfFrame);
         if (discardBuffer)
         {
             unitsOfFrame = 0;
-            glUniform1i(unitsOfFrameLoc, unitsOfFrame);
             discardBuffer = false;
         }
+        if(stashPreviousRender){
+            unitsOfFrame = 0;
+            stashPreviousRender = false;
+        }
+        glUniform1i(unitsOfFrameLoc, unitsOfFrame);//Update the value to 0 in case it was changed
         // DRAW INTO TEXTURE ATTACHED TO FBO
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glBindVertexArray(VAO);

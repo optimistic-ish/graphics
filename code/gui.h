@@ -25,6 +25,7 @@ extern float pitch;
 extern float lastX;
 extern float lastY;
 extern float fov;
+extern bool stashPreviousRender;
 extern glm::mat4 directionRotationMatrix;
 
 
