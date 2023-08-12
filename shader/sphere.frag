@@ -338,10 +338,7 @@ void main()
     
     if(screenOrBuffer){
         FragColor=texture(screenTexture,textureCoordinates);
-        float divider=float(unitsOfFrame);
-        FragColor.x/=divider;
-        FragColor.y/=divider;
-        FragColor.z/=divider;
+        FragColor.xyz = FragColor.xyz/float(unitsOfFrame);
     }
     else{
         // Normalized screen coordinates (-1 to 1)
