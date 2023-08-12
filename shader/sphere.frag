@@ -1,8 +1,12 @@
 #shader vertex
-#version 330 core
+#version 430 core
 layout (location=0) in vec2 vertexPos;
+layout (location = 1) in vec2 texCoords;
+
+out vec2 textureCoordinates;
 
 void main() {
+    textureCoordinates = texCoords;
     gl_Position = vec4(vertexPos.xy, 1.0, 1.0);
 }
 
@@ -20,12 +24,24 @@ void main() {
 #define DIELECTRIC 2
 
 out vec4 FragColor;
-uniform float sphereRadius[5]; // Adjust the sphere radius as needed
-// uniform vec3 spherecenter[5];
-uniform vec2 iResolution; //Resolution
+in vec2 textureCoordinates;
+
+uniform float sphereRadius[5];// Adjust the sphere radius as needed
+//uniform float sphereRadius1;
+uniform vec2 iResolution;//Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
+uniform sampler2D screenTexture;
 
+//for seeding pseudo random variable more properly
+uniform float seed;
+
+//if 0 means it's buffer so does ray tracing work and adds to previous frame
+//if 1/true means averages number of frame passes and use to present in screen
+uniform bool screenOrBuffer;
+
+// to know how many previous frames are stored in our buffer
+uniform int unitsOfFrame;
 
 struct MaterialProperties
 {
@@ -277,7 +293,7 @@ vec3 rayColor(ray r) {
 
         
         bool didIntersectScene = intersectScene(r, 0.001, RENDER_DISTANCE, rec) ;
-        if(didIntersectScene)
+        if(didIntersectScene && !rec.material.isLightSource)
         {
             ray nori;
             vec3 attenuation;
@@ -295,14 +311,14 @@ vec3 rayColor(ray r) {
             //     break;
             // }
         }
-        else if(didIntersectScene && false)
+        else if(didIntersectScene && rec.material.isLightSource)
         {
             break;
         }
         else
         {
-            // col *= vec3(0.0);
-            col*=skyColor(r);
+            col *= vec3(0.0);
+            // col*=skyColor(r);
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -319,132 +335,136 @@ vec3 rayColor(ray r) {
 
 void main()
 {
-    // Normalized screen coordinates (-1 to 1)
-    vec2 screenCoords = (gl_FragCoord.xy * 2.0 - iResolution) / iResolution;
-
-    // Aspect ratio correction
-    float aspectRatio = iResolution.x / iResolution.y;
-    screenCoords.x *= aspectRatio;
-
-    // Ray origin (camera position)
-    // vec3 cameraPosition = vec3(0.0, 0.0, 10.0);
-
-    // Ray direction (pointing from camera to screen coordinates)
-    // ray r;
-    // r.origin = cameraPosition;
-    // r.direction = normalize(vec3(screenCoords, -1.0) - cameraPosition);
-
-
-    //>>>> CAMERA CHANGES
-    ray r;
-    r.origin = cameraPosition;
-
-    vec3 try=vec3(screenCoords, -1.0) - cameraPosition;
-    r.direction=(normalize(vec4(try, 0.0)) * rotationMatrix).xyz;
-
-    //////TEMP TEMP TEMp
-    float y_offset = 0.03f;
     
-    // Sphere properties (centered at the origin)
-    vec3 sphereCenter = vec3( 0.0, 0.0500000 + y_offset, 1.0);
-    float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
-
-
-    //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
-    float  mFuzz = 0.5;
-    float refractive_index = 1.5;
-    bool isLightSource = false;
-
- MaterialProperties materialProp;
-    materialProp.albedo = vec3(1.0, 1.0, 1.0);
-    materialProp.surfaceType = DIELECTRIC;
-    materialProp.fuzz = mFuzz;
-    materialProp.refractive_index = refractive_index;
-    materialProp.isLightSource = isLightSource;
-    Object obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(0, obj);
-    
-    //sphere 1
-    sphereCenter = vec3( 0.4,0.1,1.0f);
-    radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
-    materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
-    materialProp.surfaceType = DIELECTRIC;
-    materialProp.fuzz = 0.25f;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(1, obj);
-     //sphere 2
-    sphereCenter = vec3( 0.4,0.1,1.0f);
-    radiusNormalized-=0.005;
-    materialProp.albedo = vec3( 1.0, 0.465652, 0.665070);
-    materialProp.surfaceType = DIELECTRIC;
-    materialProp.fuzz = 0.25f;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(2, obj);
-
-    //sphere 3
-    sphereCenter = vec3( 0.6, 0.1, 1.0f);
-    radiusNormalized=((3.1415)*sphereRadius[2]*sphereRadius[2])/(iResolution.x*iResolution.y);
-    materialProp.albedo = vec3(0.1922, 0.8588, 0.6588);
-    materialProp.surfaceType = ROUGH_SURFACE;
-    materialProp.fuzz = mFuzz-0.3f;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(3, obj);
-
-    //sphere 4
-    sphereCenter = vec3( -0.4,0.1,1.0f);
-    radiusNormalized=((3.1415)*sphereRadius[3]*sphereRadius[3])/(iResolution.x*iResolution.y);
-    materialProp.albedo = vec3(0.8196, 0.6353, 0.9725);
-    materialProp.surfaceType = METALLIC_SURFACE;
-    materialProp.fuzz = 0.2f;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(4, obj);
-
-  //sphere 5
-    sphereCenter = vec3( 0.2,0.1,1.0f);
-    radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
-    materialProp.albedo = vec3(1.0, 1.0, 1.0);
-    materialProp.surfaceType = METALLIC_SURFACE;
-    materialProp.fuzz = 0.05f;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(5, obj);
-
-    
-    sphereCenter = vec3( 0.0, 0.7, 1.0);
-    radiusNormalized=0.5;
-    materialProp.albedo = vec3(0.0627, 0.0, 0.9608);
-    materialProp.surfaceType = DIELECTRIC;
-    materialProp.fuzz = mFuzz;
-    materialProp.refractive_index = refractive_index;
-    materialProp.isLightSource = !isLightSource;
-    obj = Object(sphereCenter, radiusNormalized, materialProp);
-    initializeScene(6, obj);
-
-    // Initialize background sphere (backgroundCenter with backgroundRadius)
-    materialProp.albedo = vec3(0.5);
-    materialProp.surfaceType = ROUGH_SURFACE;
-    materialProp.fuzz = mFuzz+0.3f;
-    materialProp.isLightSource = false;
-    vec3 backgroundCenter=vec3(0.0,-1000,0.0);
-    float backgroundRadius=1000;
-    obj = Object(backgroundCenter, backgroundRadius, materialProp);
-    initializeScene(NO_OF_OBJECTS-1, obj);
-
-
-
-
-    co.xy = gl_FragCoord.xy/iResolution.xy;
-
-    vec3 fcolor= vec3(0.0f);
-    
-
-
-    int SAMPLES_PER_PIXEL = 50;
-    for (int i = 0; i < SAMPLES_PER_PIXEL; i++) {
-        fcolor += vec3(rayColor(r));
+    if(screenOrBuffer){
+        FragColor=texture(screenTexture,textureCoordinates);
+        float divider=float(unitsOfFrame);
+        FragColor.x/=divider;
+        FragColor.y/=divider;
+        FragColor.z/=divider;
     }
-    fcolor /= SAMPLES_PER_PIXEL;
-
-    //gamma correction
-    fcolor = vec3( sqrt(fcolor.x), sqrt(fcolor.y), sqrt(fcolor.z) );
-    FragColor = vec4(fcolor,1.0f);
+    else{
+        // Normalized screen coordinates (-1 to 1)
+        vec2 screenCoords=(gl_FragCoord.xy*2.-iResolution)/iResolution;
+        
+        // Aspect ratio correction
+        float aspectRatio=iResolution.x/iResolution.y;
+        screenCoords.x*=aspectRatio;
+        
+        //>>>> CAMERA CHANGES
+        ray r;
+        r.origin=cameraPosition;
+        
+        vec3 try=vec3(screenCoords,-1.)-cameraPosition;
+        r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
+        
+        //////TEMP TEMP TEMp
+        float y_offset=.03f;
+        
+        // Sphere properties (centered at the origin)
+        vec3 sphereCenter=vec3(0.,.0500000+y_offset,1.);
+        float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
+        
+        //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
+        float mFuzz=.5;
+        float refractive_index=1.5;
+        bool isLightSource=false;
+        
+        MaterialProperties materialProp;
+        materialProp.albedo=vec3(1.,1.,1.);
+        materialProp.surfaceType=DIELECTRIC;
+        materialProp.fuzz=mFuzz;
+        materialProp.refractive_index=refractive_index;
+        materialProp.isLightSource=isLightSource;
+        Object obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(0,obj);
+        
+        //sphere 1
+        sphereCenter=vec3(.4,.1,1.f);
+        radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
+        materialProp.albedo=vec3(1.,.465652,.665070);
+        materialProp.surfaceType=DIELECTRIC;
+        materialProp.fuzz=.25f;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(1,obj);
+        //sphere 2
+        sphereCenter=vec3(.4,.1,1.f);
+        radiusNormalized-=.005;
+        materialProp.albedo=vec3(1.,.465652,.665070);
+        materialProp.surfaceType=DIELECTRIC;
+        materialProp.fuzz=.25f;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(2,obj);
+        
+        //sphere 3
+        sphereCenter=vec3(.6,.1,1.f);
+        radiusNormalized=((3.1415)*sphereRadius[2]*sphereRadius[2])/(iResolution.x*iResolution.y);
+        materialProp.albedo=vec3(.1922,.8588,.6588);
+        materialProp.surfaceType=ROUGH_SURFACE;
+        materialProp.fuzz=mFuzz-.3f;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(3,obj);
+        
+        //sphere 4
+        sphereCenter=vec3(-.4,.1,1.f);
+        radiusNormalized=((3.1415)*sphereRadius[3]*sphereRadius[3])/(iResolution.x*iResolution.y);
+        materialProp.albedo=vec3(.8196,.6353,.9725);
+        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.fuzz=.2f;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(4,obj);
+        
+        //sphere 5
+        sphereCenter=vec3(.2,.1,1.f);
+        radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
+        materialProp.albedo=vec3(1.,1.,1.);
+        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.fuzz=.05f;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(5,obj);
+        
+        sphereCenter=vec3(0.,.7,1.);
+        radiusNormalized=.5;
+        materialProp.albedo=vec3(.0627,0.,.9608);
+        materialProp.surfaceType=DIELECTRIC;
+        materialProp.fuzz=mFuzz;
+        materialProp.refractive_index=refractive_index;
+        materialProp.isLightSource=!isLightSource;
+        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        initializeScene(6,obj);
+        
+        // Initialize background sphere (backgroundCenter with backgroundRadius)
+        materialProp.albedo=vec3(.5);
+        materialProp.surfaceType=ROUGH_SURFACE;
+        materialProp.fuzz=mFuzz+.3f;
+        materialProp.isLightSource=false;
+        vec3 backgroundCenter=vec3(0.,-1000,0.);
+        float backgroundRadius=1000;
+        obj=Object(backgroundCenter,backgroundRadius,materialProp);
+        initializeScene(NO_OF_OBJECTS-1,obj);
+        
+        //seed is shitty
+        vec2 seedNum=vec2(seed,1.)+gl_FragCoord.xy;
+        co.xy=seedNum.xy/iResolution.xy;
+        // co.xy = gl_FragCoord.xy/iResolution.xy;
+        
+        vec3 fcolor=vec3(0.f);
+        int SAMPLES_PER_PIXEL=1;
+        for(int i=0;i<SAMPLES_PER_PIXEL;i++){
+            fcolor+=vec3(rayColor(r));
+        }
+        fcolor/=SAMPLES_PER_PIXEL;
+        
+        //gamma correction
+        fcolor=vec3(sqrt(fcolor.x),sqrt(fcolor.y),sqrt(fcolor.z));
+        // FragColor = vec4(fcolor,1.0f);
+        if(unitsOfFrame>0){
+            vec3 tcol=texture(screenTexture,textureCoordinates).rgb;
+            FragColor=vec4(fcolor,1.f)+vec4(tcol,1.);// add present calculations for later use
+            // FragColor = vec4(1.0);
+        }//if this if doesn't run previous calculations are as you can see discarded
+        else{
+            FragColor=vec4(fcolor,1.f);
+        }
+    }
 }

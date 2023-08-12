@@ -2,10 +2,10 @@
 #include <string>
 
 
-unsigned int SCR_WIDTH=800;
-unsigned int SCR_HEIGHT=800;
+unsigned int SCR_WIDTH=1100;
+unsigned int SCR_HEIGHT=699;
 
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f,  3.0f);
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.7f,  3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
 
@@ -130,18 +130,6 @@ int windowCreation::windowInitialize()
     }
     return 0;
 }
-
-void framebuffer_size_callback(GLFWwindow *window, int width, int height)
-    {
-        // make sure the viewport matches the new window dimensions; note that width and
-        // height will be significantly larger than specified on retina displays.
-        
-        glViewport(0, 0, width, height);
-
-        SCR_HEIGHT=height;
-        SCR_WIDTH=width;
-        
-    }
 
 void processInput(GLFWwindow *window)
     {
