@@ -51,6 +51,7 @@ struct MaterialProperties
     float refractive_index;
 
     bool isLightSource;
+    float specularProbability;
 };
 
 
@@ -109,6 +110,7 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.material.fuzz = sphere.material.fuzz;
             rec.material.refractive_index = sphere.material.refractive_index;
 
+            rec.material.specularProbability = sphere.material.specularProbability;
             rec.material.isLightSource = sphere.material.isLightSource;
             return true;
         }
@@ -126,6 +128,7 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
             rec.material.fuzz = sphere.material.fuzz;
             rec.material.refractive_index = sphere.material.refractive_index;
             
+            rec.material.specularProbability = sphere.material.specularProbability;
             rec.material.isLightSource = sphere.material.isLightSource;
             return true;
         }
@@ -298,13 +301,27 @@ vec3 rayColor(ray r) {
             ray nori;
             vec3 attenuation;
 
+            bool isSpecular = false;
+            if(rec.material.surfaceType == METALLIC_SURFACE){
+                isSpecular = rec.material.specularProbability >= rand();
+                rec.material.surfaceType = isSpecular? METALLIC_SURFACE: ROUGH_SURFACE;
+            }
+
             bool wasScattered=material_bsdf(rec, r, nori, attenuation, i);
 
             r.origin= nori.origin;
             r.direction= nori.direction;
 
             if(wasScattered)
-                col*=attenuation;
+            {
+                if(!isSpecular){
+                    col*=attenuation;
+                }
+                else{
+                    col *= vec3(1.0);//specular color
+                }
+
+            }
             // else
             // {
             //     col*=vec3(0.f,0.f,0.f);
@@ -363,7 +380,7 @@ void main()
         float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
         
         //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
-        float mFuzz=.5;
+        float mFuzz=0.0;
         float refractive_index=1.5;
         bool isLightSource=false;
         
@@ -373,6 +390,7 @@ void main()
         materialProp.fuzz=mFuzz;
         materialProp.refractive_index=refractive_index;
         materialProp.isLightSource=isLightSource;
+        materialProp.specularProbability = 0.5;
         Object obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(0,obj);
         
@@ -380,16 +398,18 @@ void main()
         sphereCenter=vec3(.4,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(1.,.465652,.665070);
-        materialProp.surfaceType=DIELECTRIC;
-        materialProp.fuzz=.25f;
+        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.fuzz=0.f;
+        materialProp.specularProbability = 0.2;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(1,obj);
         //sphere 2
         sphereCenter=vec3(.4,.1,1.f);
         radiusNormalized-=.005;
         materialProp.albedo=vec3(1.,.465652,.665070);
-        materialProp.surfaceType=DIELECTRIC;
-        materialProp.fuzz=.25f;
+        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.fuzz=0;
+        materialProp.specularProbability = 0.4;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(2,obj);
         
@@ -397,8 +417,9 @@ void main()
         sphereCenter=vec3(.6,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[2]*sphereRadius[2])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(.1922,.8588,.6588);
-        materialProp.surfaceType=ROUGH_SURFACE;
-        materialProp.fuzz=mFuzz-.3f;
+        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.fuzz = 0;
+        materialProp.specularProbability = 0.14;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(3,obj);
         
@@ -407,7 +428,8 @@ void main()
         radiusNormalized=((3.1415)*sphereRadius[3]*sphereRadius[3])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(.8196,.6353,.9725);
         materialProp.surfaceType=METALLIC_SURFACE;
-        materialProp.fuzz=.2f;
+        materialProp.fuzz=0;
+        materialProp.specularProbability = 0.3;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(4,obj);
         
@@ -416,17 +438,20 @@ void main()
         radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(1.,1.,1.);
         materialProp.surfaceType=METALLIC_SURFACE;
-        materialProp.fuzz=.05f;
+        materialProp.fuzz=.0f;
+        materialProp.specularProbability = 0.1;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(5,obj);
         
-        sphereCenter=vec3(0.,.7,1.);
-        radiusNormalized=.5;
+
+        //light source
+        sphereCenter=vec3(0.,4,1.);
+        radiusNormalized=3;
         materialProp.albedo=vec3(.0627,0.,.9608);
         materialProp.surfaceType=DIELECTRIC;
         materialProp.fuzz=mFuzz;
         materialProp.refractive_index=refractive_index;
-        materialProp.isLightSource=!isLightSource;
+        materialProp.isLightSource=true;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(6,obj);
         
@@ -446,7 +471,7 @@ void main()
         // co.xy = gl_FragCoord.xy/iResolution.xy;
         
         vec3 fcolor=vec3(0.f);
-        int SAMPLES_PER_PIXEL=1;
+        int SAMPLES_PER_PIXEL=42;
         for(int i=0;i<SAMPLES_PER_PIXEL;i++){
             fcolor+=vec3(rayColor(r));
         }
