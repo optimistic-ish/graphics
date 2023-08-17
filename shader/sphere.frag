@@ -11,7 +11,7 @@ void main() {
 }
 
 #shader fragment
-#version 330 core
+#version 430 core
 
 #define PI  3.1415926535
 #define SAMPLING_DEPTH 16
@@ -181,10 +181,6 @@ vec3 random_in_hemisphere(vec3 normal){
             closest_so_far = temp_rec.t;
             rec            = temp_rec;
 
-            // //record if the ray hit a light source
-            // if(temp_rec.material.isLightSource){
-            //     rec.didHitLight
-            // }
         }
     }
     return hit_anything;
@@ -217,19 +213,15 @@ float schlickReflectance(float cosTheta, float refIndex)
 }
 
 //Bidirectional scattering distribution function
-bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 attenuation, int seedVariability)
+bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 attenuation)
 {
     int materialNature = isectInfo.material.surfaceType;
         if(materialNature == ROUGH_SURFACE)
         {
-            vec2 coordSeed = vec2(gl_FragCoord.x + seedVariability, gl_FragCoord.y + seedVariability*2.0); 
-
-            // vec2 coordSeed = vec2(gl_FragCoord.x + 0, gl_FragCoord.y); 
-
-
+    
             //TRYING DIFFERENT DIFFUSION METHOD
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
             
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -241,8 +233,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
             
-            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
-            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
             
             attenuation = isectInfo.material.albedo;
 
@@ -307,7 +299,7 @@ vec3 rayColor(ray r) {
                 rec.material.surfaceType = isSpecular? METALLIC_SURFACE: ROUGH_SURFACE;
             }
 
-            bool wasScattered=material_bsdf(rec, r, nori, attenuation, i);
+            bool wasScattered=material_bsdf(rec, r, nori, attenuation);
 
             r.origin= nori.origin;
             r.direction= nori.direction;
@@ -366,17 +358,11 @@ void main()
         screenCoords.x*=aspectRatio;
         
         //>>>> CAMERA CHANGES
-        ray r;
-        r.origin=cameraPosition;
         
-        vec3 try=vec3(screenCoords,-1.)-cameraPosition;
-        r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
         
-        //////TEMP TEMP TEMp
-        float y_offset=.03f;
-        
+
         // Sphere properties (centered at the origin)
-        vec3 sphereCenter=vec3(0.,.0500000+y_offset,1.);
+        vec3 sphereCenter=vec3(0.,.0500000,1.);
         float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
         
         //HARDCODED VALUE FROM WHICH GENERAL PROPERTIES ARE DEFINED
@@ -387,7 +373,7 @@ void main()
         MaterialProperties materialProp;
         materialProp.albedo=vec3(1.,1.,1.);
         materialProp.surfaceType=DIELECTRIC;
-        materialProp.fuzz=mFuzz;
+        materialProp.fuzz=0.03;
         materialProp.refractive_index=refractive_index;
         materialProp.isLightSource=isLightSource;
         materialProp.specularProbability = 0.5;
@@ -399,7 +385,7 @@ void main()
         radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(1.,.465652,.665070);
         materialProp.surfaceType=METALLIC_SURFACE;
-        materialProp.fuzz=0.f;
+        materialProp.fuzz=0.04f;
         materialProp.specularProbability = 0.2;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(1,obj);
@@ -408,7 +394,7 @@ void main()
         radiusNormalized-=.005;
         materialProp.albedo=vec3(1.,.465652,.665070);
         materialProp.surfaceType=METALLIC_SURFACE;
-        materialProp.fuzz=0;
+        materialProp.fuzz=0.1;
         materialProp.specularProbability = 0.4;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(2,obj);
@@ -429,17 +415,17 @@ void main()
         materialProp.albedo=vec3(.8196,.6353,.9725);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz=0;
-        materialProp.specularProbability = 0.3;
+        materialProp.specularProbability = 0.077;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(4,obj);
         
         //sphere 5
         sphereCenter=vec3(.2,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
-        materialProp.albedo=vec3(1.,1.,1.);
+        materialProp.albedo=vec3(0.75);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz=.0f;
-        materialProp.specularProbability = 0.1;
+        materialProp.specularProbability = 1.0;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(5,obj);
         
@@ -465,27 +451,59 @@ void main()
         obj=Object(backgroundCenter,backgroundRadius,materialProp);
         initializeScene(NO_OF_OBJECTS-1,obj);
         
-        //seed is shitty
         vec2 seedNum=vec2(seed,1.)+gl_FragCoord.xy;
         co.xy=seedNum.xy/iResolution.xy;
-        // co.xy = gl_FragCoord.xy/iResolution.xy;
         
-        vec3 fcolor=vec3(0.f);
-        int SAMPLES_PER_PIXEL=42;
-        for(int i=0;i<SAMPLES_PER_PIXEL;i++){
-            fcolor+=vec3(rayColor(r));
-        }
+        // vec3 fcolor=vec3(0.f);
+        // int SAMPLES_PER_PIXEL=1;
+        // float offs = 0.001;
+        // for(int i=0;i<SAMPLES_PER_PIXEL;i++){
+        //     // float trand = rand();
+        //     // if(trand < 0.5){
+        //     //     offs = -(offs)/(SAMPLES_PER_PIXEL*trand);
+        //     // }
+        //     // r.origin.xy = r.origin.xy + offs;
+        //     fcolor+=vec3(rayColor(r));
+        // }
+        // fcolor/=SAMPLES_PER_PIXEL;
+    
+    //NEW ANTI_ALIASING DON"T THINK IT IS UPTO THE MARK
+
+    ray r;
+    r.origin=cameraPosition;
+    // vec3 try=vec3(screenCoords,-1.)-cameraPosition;
+    // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
+
+    vec3 fcolor=vec3(0.f);
+    int SAMPLES_PER_PIXEL=10;
+    ray jitteredRay;
+    for(int i=0;i<SAMPLES_PER_PIXEL;i++){
+        //OFFSET within a pixel
+        float u=(gl_FragCoord.x+rand())/iResolution.x;
+        float v=(gl_FragCoord.y+rand())/iResolution.y;
+
+        // Compute the ray direction based on the pixel position and offsets
+        vec3 rayDir=normalize(vec3(screenCoords+(pow(-1,i)*vec2(u,v)) ,-1.) - cameraPosition);
+
+        // Create the ray with the new direction
+        jitteredRay.origin = r.origin;
+        jitteredRay.direction=(normalize(vec4(rayDir,0.))*rotationMatrix).xyz;
+
+        fcolor+=vec3(rayColor(jitteredRay));
+    }
         fcolor/=SAMPLES_PER_PIXEL;
-        
+
+
         //gamma correction
         fcolor=vec3(sqrt(fcolor.x),sqrt(fcolor.y),sqrt(fcolor.z));
-        // FragColor = vec4(fcolor,1.0f);
+        
+
+        //If true buffer get overwritten with previous
         if(unitsOfFrame>0){
             vec3 tcol=texture(screenTexture,textureCoordinates).rgb;
             FragColor=vec4(fcolor,1.f)+vec4(tcol,1.);// add present calculations for later use
-            // FragColor = vec4(1.0);
-        }//if this if doesn't run previous calculations are as you can see discarded
-        else{
+        }
+        else{//else previous texture/buffer data is discarded
             FragColor=vec4(fcolor,1.f);
         }
     }

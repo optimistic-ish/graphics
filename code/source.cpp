@@ -71,6 +71,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
     SCR_WIDTH = width;
     glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorbuffer, 0);
     discardBuffer = true;
 }
