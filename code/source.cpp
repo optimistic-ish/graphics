@@ -34,10 +34,10 @@ void saveImage(const char* filepath, GLFWwindow* w)
     stbi_write_png(filepath, width, height, nrChannels, byteBuffer, stride);
 }
 unsigned int VAO,VBO,EBO, FBO;
-
     unsigned int framebuffer;
     unsigned int textureColorbuffer;
     bool discardBuffer = false;
+    unsigned int skyBoxTexture;
 
 void pointSetUp(shader &shader)
 {   
@@ -59,6 +59,7 @@ void pointSetUp(shader &shader)
     shader.shaderCreation();                        // creating shader from the shader source code
     shader.useShader(); 
     shader.setVal("screenTexture", 0);
+    shader.setVal("skyTexture", 1);
 }
 void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 {
@@ -69,6 +70,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
     SCR_HEIGHT = height;
     SCR_WIDTH = width;
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureColorbuffer);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -115,6 +117,22 @@ int main()
     }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	int sbWidth, sbHeight, sbChannels;
+	float* skyboxData = stbi_loadf("resources/sky_img.hdr", &sbWidth, &sbHeight, &sbChannels, 0);
+    if(!skyboxData){
+        std::cout << "FAILED TO LOAD" << std::endl;
+    }
+
+    glGenTextures(1, &skyBoxTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, skyBoxTexture);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sbWidth, sbHeight, 0, GL_RGB, GL_FLOAT, skyboxData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	stbi_image_free(skyboxData);
+
+    
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     glDisable(GL_DEPTH_TEST);
     int unitsOfFrame{0};

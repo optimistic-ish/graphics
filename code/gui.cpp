@@ -18,7 +18,7 @@ float yaw   = 0.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 re
 float pitch =  0.0f;
 float lastX =  800.0f / 2.0;
 float lastY =  600.0 / 2.0;
-float fov   =  60;
+float fov   =  45;
 bool stashPreviousRender = false;
 
 glm::mat4 directionRotationMatrix(1);

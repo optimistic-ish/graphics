@@ -32,7 +32,7 @@ uniform vec2 iResolution;//Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
 uniform sampler2D screenTexture;
-
+uniform sampler2D skyTexture;
 //for seeding pseudo random variable more properly
 uniform float seed;
 
@@ -220,8 +220,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         {
     
             //TRYING DIFFERENT DIFFUSION METHOD
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
             
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -233,8 +233,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
             
-            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
-            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
             
             attenuation = isectInfo.material.albedo;
 
@@ -277,7 +277,10 @@ vec3 skyColor(ray r)
     float t = 0.5 * (unit_direction.y + 1.0);
     return (1.0 - t) * vec3(0.4627, 0.651, 1.0) + t * vec3(1.0, 0.9647, 0.4941);
 }
-
+vec3 skyBoxColor(vec3 d)
+{
+    return texture(skyTexture, vec2(0.5 + atan(d.x, d.z)/(2*PI), 0.5 + asin(-d.y)/PI)).rgb;
+}
 vec3 rayColor(ray r) {
     vec3 col = vec3(1.0);
   
@@ -311,14 +314,15 @@ vec3 rayColor(ray r) {
                 }
                 else{
                     col *= vec3(1.0);//specular color
+                    // col *= rec.material.albedo;
                 }
 
             }
-            // else
-            // {
-            //     col*=vec3(0.f,0.f,0.f);
-            //     break;
-            // }
+            else
+            {
+                col*=vec3(0.f,0.f,0.f);
+                break;
+            }
         }
         else if(didIntersectScene && rec.material.isLightSource)
         {
@@ -326,8 +330,9 @@ vec3 rayColor(ray r) {
         }
         else
         {
-            col *= vec3(0.0);
+            // col *= vec3(0.0);
             // col*=skyColor(r);
+            col *= 0.5*skyBoxColor(normalize(r.direction));
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -415,7 +420,7 @@ void main()
         materialProp.albedo=vec3(.8196,.6353,.9725);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz=0;
-        materialProp.specularProbability = 0.077;
+        materialProp.specularProbability = 0.01;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(4,obj);
         
@@ -431,14 +436,14 @@ void main()
         
 
         //light source
-        sphereCenter=vec3(0.,4,1.);
+        sphereCenter=vec3(0.,-0.5,1.);
         radiusNormalized=3;
         materialProp.albedo=vec3(.0627,0.,.9608);
-        materialProp.surfaceType=DIELECTRIC;
+        materialProp.surfaceType=ROUGH_SURFACE;
         materialProp.fuzz=mFuzz;
         materialProp.refractive_index=refractive_index;
-        materialProp.isLightSource=true;
-        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        // materialProp.isLightSource=true;
+        obj=Object(sphereCenter,0.25,materialProp);
         initializeScene(6,obj);
         
         // Initialize background sphere (backgroundCenter with backgroundRadius)
@@ -447,7 +452,7 @@ void main()
         materialProp.fuzz=mFuzz+.3f;
         materialProp.isLightSource=false;
         vec3 backgroundCenter=vec3(0.,-1000,0.);
-        float backgroundRadius=1000;
+        float backgroundRadius=1;
         obj=Object(backgroundCenter,backgroundRadius,materialProp);
         initializeScene(NO_OF_OBJECTS-1,obj);
         
@@ -475,7 +480,7 @@ void main()
     // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
 
     vec3 fcolor=vec3(0.f);
-    int SAMPLES_PER_PIXEL=1;
+    int SAMPLES_PER_PIXEL=10;
     ray jitteredRay;
     for(int i=0;i<SAMPLES_PER_PIXEL;i++){
         //OFFSET within a pixel
