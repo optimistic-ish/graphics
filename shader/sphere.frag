@@ -220,8 +220,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         {
     
             //TRYING DIFFERENT DIFFUSION METHOD
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
             
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -233,8 +233,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
             
-            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
-            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
             
             attenuation = isectInfo.material.albedo;
 
@@ -279,7 +279,8 @@ vec3 skyColor(ray r)
 }
 vec3 skyBoxColor(vec3 d)
 {
-    return texture(skyTexture, vec2(0.5 + atan(d.x, d.z)/(2*PI), 0.5 + asin(-d.y)/PI)).rgb;
+    return clamp(texture(skyTexture, vec2(0.5 + atan(d.x, d.z)/(2*PI), 0.5 + asin(-d.y)/PI)).rgb, 0, 1.0f);
+    // return texture(skyTexture, vec2(0.5 + atan(d.x, d.z)/(2*PI), 0.5 + asin(-d.y)/PI)).rgb;
 }
 vec3 rayColor(ray r) {
     vec3 col = vec3(1.0);
@@ -332,7 +333,7 @@ vec3 rayColor(ray r) {
         {
             // col *= vec3(0.0);
             // col*=skyColor(r);
-            col *= 0.5*skyBoxColor(normalize(r.direction));
+            col *= ((skyBoxColor(normalize(r.direction))));
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -480,7 +481,7 @@ void main()
     // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
 
     vec3 fcolor=vec3(0.f);
-    int SAMPLES_PER_PIXEL=10;
+    int SAMPLES_PER_PIXEL=1;
     ray jitteredRay;
     for(int i=0;i<SAMPLES_PER_PIXEL;i++){
         //OFFSET within a pixel
@@ -506,7 +507,7 @@ void main()
         //If true buffer get overwritten with previous
         if(unitsOfFrame>0){
             vec3 tcol=texture(screenTexture,textureCoordinates).rgb;
-            FragColor=vec4(fcolor,1.f)+vec4(tcol,1.);// add present calculations for later use
+            FragColor=(vec4(fcolor,1.f)+vec4(tcol,1.));// add present calculations for later use
         }
         else{//else previous texture/buffer data is discarded
             FragColor=vec4(fcolor,1.f);
