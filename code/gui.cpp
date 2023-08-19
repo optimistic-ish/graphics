@@ -72,7 +72,7 @@ namespace GUI {
             {
                 std::string sliderID="radius";
                 sliderID.append(std::to_string(i));
-                ImGui::InputFloat3("Center",centerValue);
+                // ImGui::InputFloat3("Center",centerValue);
                 ImGui::SliderFloat(sliderID.c_str(),&radiusValue[i],100.0f, 450.0f);
             }
                 

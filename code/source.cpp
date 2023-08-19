@@ -120,7 +120,7 @@ int main()
 	int sbWidth, sbHeight, sbChannels;
 	float* skyboxData = stbi_loadf("resources/sky_img.hdr", &sbWidth, &sbHeight, &sbChannels, 0);
     if(!skyboxData){
-        std::cout << "FAILED TO LOAD" << std::endl;
+        std::cout << "FAILED TO LOAD SKYBOX" << std::endl;
     }
 
     glGenTextures(1, &skyBoxTexture);
