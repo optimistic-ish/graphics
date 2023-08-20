@@ -145,13 +145,13 @@ bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_rec
     rec.normal=(rec.front_face)?rec.normal:-rec.normal;
 
     //record materialproperties
-    //is rec.material = plane.material enough to substitute for all these lines
-    rec.material.albedo=plane.material.albedo;
-    rec.material.surfaceType=plane.material.surfaceType;
-    rec.material.fuzz=plane.material.fuzz;
-    rec.material.refractive_index=plane.material.refractive_index;
-    rec.material.specularProbability = plane.material.specularProbability;
-    rec.material.isLightSource = plane.material.isLightSource;
+    rec.material = plane.material;
+    // rec.material.albedo=plane.material.albedo;
+    // rec.material.surfaceType=plane.material.surfaceType;
+    // rec.material.fuzz=plane.material.fuzz;
+    // rec.material.refractive_index=plane.material.refractive_index;
+    // rec.material.specularProbability = plane.material.specularProbability;
+    // rec.material.isLightSource = plane.material.isLightSource;
 
     return true;
 }
@@ -179,13 +179,6 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
 
             rec.normal = (rec.front_face)?rec.normal: -rec.normal;
 
-            // rec.material.albedo = sphere.material.albedo;
-            // rec.material.surfaceType = sphere.material.surfaceType;
-            // rec.material.fuzz = sphere.material.fuzz;
-            // rec.material.refractive_index = sphere.material.refractive_index;
-
-            // rec.material.specularProbability = sphere.material.specularProbability;
-            // rec.material.isLightSource = sphere.material.isLightSource;
             rec.material = sphere.material;
             return true;
         }
@@ -198,13 +191,6 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
 
             rec.front_face = (dot(rec.normal, r.direction) < 0)? true:false;
             rec.normal = (rec.front_face)?rec.normal: -rec.normal;
-            // rec.material.albedo = sphere.material.albedo;
-            // rec.material.surfaceType = sphere.material.surfaceType;
-            // rec.material.fuzz = sphere.material.fuzz;
-            // rec.material.refractive_index = sphere.material.refractive_index;
-            
-            // rec.material.specularProbability = sphere.material.specularProbability;
-            // rec.material.isLightSource = sphere.material.isLightSource;
             
             rec.material = sphere.material;
             return true;
@@ -616,7 +602,7 @@ void main()
     // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
 
     vec3 fcolor=vec3(0.f);
-    int SAMPLES_PER_PIXEL=5;
+    int SAMPLES_PER_PIXEL=2;
     ray jitteredRay;
     for(int i=0;i<SAMPLES_PER_PIXEL;i++){
         //OFFSET within a pixel
@@ -628,8 +614,9 @@ void main()
 
         // Create the ray with the new direction
         jitteredRay.origin = r.origin;
-        jitteredRay.direction=(normalize(vec4(rayDir,0.))*rotationMatrix).xyz;
-
+        jitteredRay.direction= (normalize(rotationMatrix*(vec4(rayDir,1.0)))).xyz;
+        // jitteredRay.direction= (normalize(vec4(rayDir, 0.0)*rotationMatrix)).xyz;
+        // jitteredRay.direction = rayDir;
         fcolor+=vec3(rayColor(jitteredRay));
     }
         fcolor/=SAMPLES_PER_PIXEL;
