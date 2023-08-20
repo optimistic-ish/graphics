@@ -14,8 +14,10 @@ void main() {
 #version 430 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 16
+#define SAMPLING_DEPTH 64
 #define NO_OF_OBJECTS 8
+#define NO_OF_QUADS 2
+
 #define RENDER_DISTANCE 99999
 
 //material properties
@@ -53,7 +55,16 @@ struct MaterialProperties
     bool isLightSource;
     float specularProbability;
 };
+struct Quad{
+    vec3 Q;
+    vec3 u;
+    vec3 v;
 
+    float D;
+    vec3 normal;
+    vec3 w;
+    MaterialProperties material;
+};
 
 struct Object {
     vec3 center;
@@ -69,20 +80,83 @@ struct hit_record {
     float t;
     vec3 p;
     vec3 normal;
-
     MaterialProperties material;
 
     bool front_face;
+    float u;
+    float v;
     // bool didHitLight;
 };
 
-
+Quad quadList[NO_OF_QUADS];
 Object objectList[NO_OF_OBJECTS];
 
 void initializeScene(int objectNo , Object obj)
 {
     objectList[objectNo] = Object(obj.center, obj.radius, obj.material);
 }
+
+
+
+void initializeQuad(int quadNo , Quad obj)
+{
+    vec3 n  = cross(obj.u, obj.v);
+    vec3 normal = normalize(n);
+    float D = dot(normal, obj.Q);
+    vec3 w = n / dot(n,n);
+    quadList[quadNo] = Quad(obj.Q, obj.u, obj.v, D, normal, w ,obj.material);
+}
+
+bool isInterior(float a, float b, out hit_record rec){
+    
+    if ((a < 0) || (1 < a) || (b < 0) || (1 < b)){
+        return false;
+    }
+    
+    rec.u = a;
+    rec.v = b;
+    return true;
+}
+
+bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_record rec){
+    float denom = dot(plane.normal, r.direction);
+    if(abs(denom) < 0.0001)
+    {
+        return false;
+    }
+    float t = (plane.D - dot(plane.normal, r.origin))/denom;
+
+    if( !(t >= t_min && t <= t_max) ){
+        return false;
+    }
+    vec3 intersection = r.origin + t*r.direction;
+    vec3 planeHitPoint = intersection - plane.Q;
+    float alpha = dot(plane.w, cross(planeHitPoint, plane.v));
+    float beta = dot(plane.w , cross(plane.u , planeHitPoint));
+    
+    if(!isInterior(alpha, beta, rec)){
+        return false;
+    }
+
+    rec.t = t;
+    rec.p = intersection;
+    rec.normal= plane.normal;
+    rec.front_face=(dot(rec.normal,r.direction)<0)?true:false;
+    rec.normal=(rec.front_face)?rec.normal:-rec.normal;
+
+    //record materialproperties
+    //is rec.material = plane.material enough to substitute for all these lines
+    rec.material.albedo=plane.material.albedo;
+    rec.material.surfaceType=plane.material.surfaceType;
+    rec.material.fuzz=plane.material.fuzz;
+    rec.material.refractive_index=plane.material.refractive_index;
+    rec.material.specularProbability = plane.material.specularProbability;
+    rec.material.isLightSource = plane.material.isLightSource;
+
+    return true;
+}
+
+
 
 bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out hit_record rec) {
     vec3 oc = r.origin - sphere.center;
@@ -105,13 +179,14 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
 
             rec.normal = (rec.front_face)?rec.normal: -rec.normal;
 
-            rec.material.albedo = sphere.material.albedo;
-            rec.material.surfaceType = sphere.material.surfaceType;
-            rec.material.fuzz = sphere.material.fuzz;
-            rec.material.refractive_index = sphere.material.refractive_index;
+            // rec.material.albedo = sphere.material.albedo;
+            // rec.material.surfaceType = sphere.material.surfaceType;
+            // rec.material.fuzz = sphere.material.fuzz;
+            // rec.material.refractive_index = sphere.material.refractive_index;
 
-            rec.material.specularProbability = sphere.material.specularProbability;
-            rec.material.isLightSource = sphere.material.isLightSource;
+            // rec.material.specularProbability = sphere.material.specularProbability;
+            // rec.material.isLightSource = sphere.material.isLightSource;
+            rec.material = sphere.material;
             return true;
         }
         temp=(-b+sqrt(discriminant))/a;
@@ -123,13 +198,15 @@ bool hit_sphere(const Object sphere, const ray r, float t_min, float t_max, out 
 
             rec.front_face = (dot(rec.normal, r.direction) < 0)? true:false;
             rec.normal = (rec.front_face)?rec.normal: -rec.normal;
-            rec.material.albedo = sphere.material.albedo;
-            rec.material.surfaceType = sphere.material.surfaceType;
-            rec.material.fuzz = sphere.material.fuzz;
-            rec.material.refractive_index = sphere.material.refractive_index;
+            // rec.material.albedo = sphere.material.albedo;
+            // rec.material.surfaceType = sphere.material.surfaceType;
+            // rec.material.fuzz = sphere.material.fuzz;
+            // rec.material.refractive_index = sphere.material.refractive_index;
             
-            rec.material.specularProbability = sphere.material.specularProbability;
-            rec.material.isLightSource = sphere.material.isLightSource;
+            // rec.material.specularProbability = sphere.material.specularProbability;
+            // rec.material.isLightSource = sphere.material.isLightSource;
+            
+            rec.material = sphere.material;
             return true;
         }
     }
@@ -176,6 +253,17 @@ vec3 random_in_hemisphere(vec3 normal){
     {
         Object sphere = objectList[i];
         if (hit_sphere(sphere, r, t_min, closest_so_far, temp_rec))
+        {
+            hit_anything   = true;
+            closest_so_far = temp_rec.t;
+            rec            = temp_rec;
+
+        }
+    }
+    for (int i = 0; i < quadList.length(); i++)
+    {
+        Quad plane = quadList[i];
+        if (hit_box(plane, r, t_min, closest_so_far, temp_rec))
         {
             hit_anything   = true;
             closest_so_far = temp_rec.t;
@@ -332,8 +420,8 @@ vec3 rayColor(ray r) {
         else
         {
             // col *= vec3(0.0);
-            // col*=skyColor(r);
-            col *= ((skyBoxColor(normalize(r.direction))));
+            col*=skyColor(r);
+            // col *= ((skyBoxColor(normalize(r.direction))));
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -383,22 +471,22 @@ void main()
         materialProp.refractive_index=refractive_index;
         materialProp.isLightSource=isLightSource;
         materialProp.specularProbability = 0.5;
-        Object obj=Object(sphereCenter,radiusNormalized,materialProp);
+        Object obj=Object(sphereCenter,0.17,materialProp);
         initializeScene(0,obj);
         
         //sphere 1
-        sphereCenter=vec3(.4,.1,1.f);
+        // sphereCenter=vec3(.4,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[1]*sphereRadius[1])/(iResolution.x*iResolution.y);
         materialProp.albedo=vec3(1.,.465652,.665070);
-        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.surfaceType=DIELECTRIC;
         materialProp.fuzz=0.4f;
         materialProp.specularProbability = 0.09;
-        obj=Object(sphereCenter,radiusNormalized,materialProp);
+        obj=Object(sphereCenter,-0.169,materialProp);
         initializeScene(1,obj);
         //sphere 2
         sphereCenter=vec3(.4,.1,1.f);
         radiusNormalized-=.005;
-        materialProp.albedo=vec3(1.,.465652,.665070);
+        materialProp.albedo=vec3(0.0902, 0.9412, 1.0);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz=0.1;
         materialProp.specularProbability = 0.4;
@@ -408,7 +496,7 @@ void main()
         //sphere 3
         sphereCenter=vec3(.6,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[2]*sphereRadius[2])/(iResolution.x*iResolution.y);
-        materialProp.albedo=vec3(.1922,.8588,.6588);
+        materialProp.albedo=vec3(0.6902, 0.8863, 1.0);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz = 0;
         materialProp.specularProbability = 0.14;
@@ -418,32 +506,32 @@ void main()
         //sphere 4
         sphereCenter=vec3(-.4,.1,1.f);
         radiusNormalized=((3.1415)*sphereRadius[3]*sphereRadius[3])/(iResolution.x*iResolution.y);
-        materialProp.albedo=vec3(.8196,.6353,.9725);
-        materialProp.surfaceType=METALLIC_SURFACE;
+        materialProp.albedo=vec3(1.0, 0.851, 0.0);
+        materialProp.surfaceType=DIELECTRIC;
         materialProp.fuzz=0;
         materialProp.specularProbability = 0.01;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(4,obj);
         
         //sphere 5
-        sphereCenter=vec3(.2,.1,1.f);
+        sphereCenter=vec3(0.,.0500000,1.);
         radiusNormalized=((3.1415)*sphereRadius[4]*sphereRadius[4])/(iResolution.x*iResolution.y);
-        materialProp.albedo=vec3(0.75);
+        materialProp.albedo=vec3(1.0, 1.0, 1.0);
         materialProp.surfaceType=METALLIC_SURFACE;
         materialProp.fuzz=.0f;
-        materialProp.specularProbability = 1.0;
+        materialProp.specularProbability = 0.02;
         obj=Object(sphereCenter,radiusNormalized,materialProp);
         initializeScene(5,obj);
         
 
         //light source
-        sphereCenter=vec3(0.,-0.5,1.);
+        sphereCenter=vec3(0.,-0.9,1.);
         radiusNormalized=3;
         materialProp.albedo=vec3(.0627,0.,.9608);
         materialProp.surfaceType=ROUGH_SURFACE;
         materialProp.fuzz=mFuzz;
         materialProp.refractive_index=refractive_index;
-        // materialProp.isLightSource=true;
+        materialProp.isLightSource=true;
         obj=Object(sphereCenter,0.25,materialProp);
         initializeScene(6,obj);
         
@@ -456,6 +544,22 @@ void main()
         float backgroundRadius=1;
         obj=Object(backgroundCenter,backgroundRadius,materialProp);
         initializeScene(NO_OF_OBJECTS-1,obj);
+
+        float D = 0.0;
+        vec3 normal = vec3(0.0);
+        vec3 w = vec3(0.0);
+        materialProp.surfaceType = METALLIC_SURFACE;
+        materialProp.albedo = vec3(1.0, 0.0, 0.0);
+        Quad qObj = Quad(vec3(-3,-2, 5), vec3(0, 0,-4), vec3(0, 4, 0), D, normal , w, materialProp);
+        initializeQuad(0, qObj);
+
+        materialProp.albedo = vec3(0.1686, 1.0, 0.0);
+        qObj = Quad(vec3(-2,-2, 0), vec3(4, 0, 0), vec3(0, 4, 0), D, normal, w, materialProp);
+        initializeQuad(1,qObj);
+
+        // qObj = Quad(vec3( 3,-2, 1), vec3(0, 0, 4), vec3(0, 4, 0), right_blue);
+        // qObj = Quad(vec3(-2, 3, 1), vec3(4, 0, 0), vec3(0, 0, 4), upper_orange);
+        // qObj = Quad(vec3(-2,-3, 5), vec3(4, 0, 0), vec3(0, 0,-4), lower_teal);
         
         vec2 seedNum=vec2(seed,seed)+gl_FragCoord.xy;
         co.xy=seedNum.xy/iResolution.xy;
