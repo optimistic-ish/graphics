@@ -14,9 +14,9 @@ void main() {
 #version 430 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 64
+#define SAMPLING_DEPTH 32
 #define NO_OF_OBJECTS 8
-#define NO_OF_QUADS 2
+#define NO_OF_QUADS 6
 
 #define RENDER_DISTANCE 99999
 
@@ -420,8 +420,8 @@ vec3 rayColor(ray r) {
         else
         {
             // col *= vec3(0.0);
-            col*=skyColor(r);
-            // col *= ((skyBoxColor(normalize(r.direction))));
+            // col*=skyColor(r);
+            col *= ((skyBoxColor(normalize(r.direction))));
             break;
         }
         if(i == SAMPLING_DEPTH-1)
@@ -484,7 +484,7 @@ void main()
         obj=Object(sphereCenter,-0.169,materialProp);
         initializeScene(1,obj);
         //sphere 2
-        sphereCenter=vec3(.4,.1,1.f);
+        sphereCenter=vec3(-0.25,0.0,0.0);
         radiusNormalized-=.005;
         materialProp.albedo=vec3(0.0902, 0.9412, 1.0);
         materialProp.surfaceType=METALLIC_SURFACE;
@@ -549,18 +549,49 @@ void main()
         vec3 normal = vec3(0.0);
         vec3 w = vec3(0.0);
         materialProp.surfaceType = METALLIC_SURFACE;
-        materialProp.albedo = vec3(1.0, 0.0, 0.0);
-        Quad qObj = Quad(vec3(-3,-2, 5), vec3(0, 0,-4), vec3(0, 4, 0), D, normal , w, materialProp);
+        materialProp.specularProbability = 0.4f;
+        // materialProp.albedo = vec3(1.0, 0.0, 0.0);
+        // Quad qObj = Quad(vec3(-3,-2, 5), vec3(0, 0,-4), vec3(0, 4, 0), D, normal , w, materialProp);
+        // initializeQuad(0, qObj);
+
+        // materialProp.albedo = vec3(0.1686, 1.0, 0.0);
+        // qObj = Quad(vec3(-2,-2, 0), vec3(4, 0, 0), vec3(0, 4, 0), D, normal, w, materialProp);
+        // initializeQuad(1,qObj);
+        
+        materialProp.albedo = vec3(0.2353, 1.0, 0.0);
+        Quad qObj = Quad(vec3(0.09,   -0.5,   0),   vec3(  0, 1,   0),   vec3(  0,   0, 1),   D, normal , w, materialProp);
         initializeQuad(0, qObj);
 
-        materialProp.albedo = vec3(0.1686, 1.0, 0.0);
-        qObj = Quad(vec3(-2,-2, 0), vec3(4, 0, 0), vec3(0, 4, 0), D, normal, w, materialProp);
-        initializeQuad(1,qObj);
-
-        // qObj = Quad(vec3( 3,-2, 1), vec3(0, 0, 4), vec3(0, 4, 0), right_blue);
-        // qObj = Quad(vec3(-2, 3, 1), vec3(4, 0, 0), vec3(0, 0, 4), upper_orange);
-        // qObj = Quad(vec3(-2,-3, 5), vec3(4, 0, 0), vec3(0, 0,-4), lower_teal);
+        materialProp.albedo = vec3(1.0, 0.0, 0.0);
+        qObj = Quad(vec3(-0.9, -0.5, 0),   vec3(  0, 1,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);   
+        initializeQuad(1, qObj);
         
+        materialProp.isLightSource = true;
+        materialProp.albedo = vec3(1.0, 0.6, 0.0);
+        qObj = Quad(vec3(-0.25, 0.49999, 0.3),   vec3(-0.25,   0,   0),   vec3(  0,   0,0.25),  D, normal , w, materialProp);   
+        initializeQuad(2, qObj);
+        materialProp.isLightSource = false;
+
+        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+        qObj = Quad(vec3(  -0.9f,   -0.5,   0),   vec3(1,   0,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);   
+        initializeQuad(3, qObj);
+        
+
+        //top
+        materialProp.albedo = vec3(0.9882, 0.9882, 0.9882);
+        qObj = Quad(vec3(0.09, 0.5,0),   vec3(-1,   0,   0),   vec3(  0,   0,1),  D, normal , w, materialProp);   
+        initializeQuad(4, qObj);
+        
+        //backwall
+        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+        qObj = Quad(vec3( -0.9, -0.5, -0.00005),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
+        initializeQuad(5, qObj);
+        
+        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+        qObj = Quad(vec3( -0.9, -0.5, 1),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
+        initializeQuad(6, qObj);
+
+
         vec2 seedNum=vec2(seed,seed)+gl_FragCoord.xy;
         co.xy=seedNum.xy/iResolution.xy;
         
@@ -585,7 +616,7 @@ void main()
     // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
 
     vec3 fcolor=vec3(0.f);
-    int SAMPLES_PER_PIXEL=1;
+    int SAMPLES_PER_PIXEL=5;
     ray jitteredRay;
     for(int i=0;i<SAMPLES_PER_PIXEL;i++){
         //OFFSET within a pixel
