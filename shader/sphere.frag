@@ -14,9 +14,9 @@ void main() {
 #version 430 core
 
 #define PI  3.1415926535
-#define SAMPLING_DEPTH 32
-#define NO_OF_OBJECTS 8
-#define NO_OF_QUADS 6
+#define SAMPLING_DEPTH 16
+#define NO_OF_OBJECTS 2
+#define NO_OF_QUADS 12
 
 #define RENDER_DISTANCE 99999
 
@@ -29,10 +29,10 @@ out vec4 FragColor;
 in vec2 textureCoordinates;
 
 uniform float sphereRadius[5];// Adjust the sphere radius as needed
-//uniform float sphereRadius1;
 uniform vec2 iResolution;//Resolution
 uniform vec3 cameraPosition;
 uniform mat4 rotationMatrix;
+
 uniform sampler2D screenTexture;
 uniform sampler2D skyTexture;
 //for seeding pseudo random variable more properly
@@ -120,7 +120,7 @@ bool isInterior(float a, float b, out hit_record rec){
 
 bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_record rec){
     float denom = dot(plane.normal, r.direction);
-    if(abs(denom) < 0.0001)
+    if(abs(denom) < 0.000001)
     {
         return false;
     }
@@ -140,19 +140,12 @@ bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_rec
 
     rec.t = t;
     rec.p = intersection;
-    rec.normal= plane.normal;
-    rec.front_face=(dot(rec.normal,r.direction)<0)?true:false;
-    rec.normal=(rec.front_face)?rec.normal:-rec.normal;
+    // rec.normal= plane.normal;
+    rec.front_face=(dot(plane.normal,r.direction)<0)?true:false;
+    rec.normal=(rec.front_face)?plane.normal:-plane.normal;
 
     //record materialproperties
     rec.material = plane.material;
-    // rec.material.albedo=plane.material.albedo;
-    // rec.material.surfaceType=plane.material.surfaceType;
-    // rec.material.fuzz=plane.material.fuzz;
-    // rec.material.refractive_index=plane.material.refractive_index;
-    // rec.material.specularProbability = plane.material.specularProbability;
-    // rec.material.isLightSource = plane.material.isLightSource;
-
     return true;
 }
 
@@ -294,8 +287,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         {
     
             //TRYING DIFFERENT DIFFUSION METHOD
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
             
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -307,8 +300,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
             
-            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
-            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
             
             attenuation = isectInfo.material.albedo;
 
@@ -393,11 +386,6 @@ vec3 rayColor(ray r) {
                 }
 
             }
-            else
-            {
-                col*=vec3(0.f,0.f,0.f);
-                break;
-            }
         }
         else if(didIntersectScene && rec.material.isLightSource)
         {
@@ -421,6 +409,45 @@ vec3 rayColor(ray r) {
 }
 
 
+void createBox(vec3 a , vec3 b, MaterialProperties material, inout int startIndex)
+{
+    vec3 Min = vec3(min(a.x, b.x), min(a.y,b.y), min(a.z, b.z));
+    vec3 Max = vec3(max(a.x, b.x), max(a.y,b.y), max(a.z, b.z));
+
+    vec3 dx = vec3(Max.x - Min.x, 0, 0);
+    vec3 dy = vec3(0, Max.y - Min.y, 0);
+    vec3 dz = vec3(0, 0, Max.z - Min.z);
+
+    float D = 0.0;
+    vec3 normal = vec3(0.0);
+    vec3 w = vec3(0.0);
+
+    Quad qObj = Quad(vec3(Min.x, Min.y, Max.z), dx, dy,  D, normal , w, material);
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+
+    qObj = Quad(vec3(Max.x, Min.y, Max.z), -dz, dy, D, normal , w, material);   
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+    
+    qObj = Quad(vec3(Max.x, Min.y, Min.z), -dx, dy, D, normal , w, material);   
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+    
+    qObj = Quad(vec3(Min.x, Min.y , Min.z), dz, dy, D, normal , w, material);   
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+      
+    //top
+    qObj = Quad(vec3(Min.x, Max.y, Max.z), dx, -dz, D, normal , w, material);   
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+    
+    //backwall
+    qObj = Quad(vec3(Min.x, Min.y, Min.z), dx, dz, D, normal , w, material);   
+    initializeQuad(startIndex, qObj);
+    startIndex++;
+}
 
 void main()
 {
@@ -437,10 +464,6 @@ void main()
         float aspectRatio=iResolution.x/iResolution.y;
         screenCoords.x*=aspectRatio;
         
-        //>>>> CAMERA CHANGES
-        
-        
-
         // Sphere properties (centered at the origin)
         vec3 sphereCenter=vec3(0.,.0500000,1.);
         float radiusNormalized=((3.1415)*sphereRadius[0]*sphereRadius[0])/(iResolution.x*iResolution.y);
@@ -536,13 +559,6 @@ void main()
         vec3 w = vec3(0.0);
         materialProp.surfaceType = METALLIC_SURFACE;
         materialProp.specularProbability = 0.4f;
-        // materialProp.albedo = vec3(1.0, 0.0, 0.0);
-        // Quad qObj = Quad(vec3(-3,-2, 5), vec3(0, 0,-4), vec3(0, 4, 0), D, normal , w, materialProp);
-        // initializeQuad(0, qObj);
-
-        // materialProp.albedo = vec3(0.1686, 1.0, 0.0);
-        // qObj = Quad(vec3(-2,-2, 0), vec3(4, 0, 0), vec3(0, 4, 0), D, normal, w, materialProp);
-        // initializeQuad(1,qObj);
         
         materialProp.albedo = vec3(0.2353, 1.0, 0.0);
         Quad qObj = Quad(vec3(0.09,   -0.5,   0),   vec3(  0, 1,   0),   vec3(  0,   0, 1),   D, normal , w, materialProp);
@@ -573,53 +589,61 @@ void main()
         qObj = Quad(vec3( -0.9, -0.5, -0.00005),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
         initializeQuad(5, qObj);
         
-        materialProp.albedo = vec3(1.0, 1.0, 1.0);
-        qObj = Quad(vec3( -0.9, -0.5, 1),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
-        initializeQuad(6, qObj);
+        // materialProp.albedo = vec3(1.0, 1.0, 1.0);
+        // qObj = Quad(vec3( -0.9, -0.5, 1),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
+        // initializeQuad(6, qObj);
 
+        int startInde = 6;
+        materialProp.surfaceType = DIELECTRIC;
+        materialProp.albedo = vec3(0.9216, 0.0, 0.0);
+        createBox(vec3(0.0), vec3(0.5), materialProp, startInde);
 
         vec2 seedNum=vec2(seed,seed)+gl_FragCoord.xy;
         co.xy=seedNum.xy/iResolution.xy;
         
-        // vec3 fcolor=vec3(0.f);
-        // int SAMPLES_PER_PIXEL=1;
-        // float offs = 0.001;
-        // for(int i=0;i<SAMPLES_PER_PIXEL;i++){
-        //     // float trand = rand();
-        //     // if(trand < 0.5){
-        //     //     offs = -(offs)/(SAMPLES_PER_PIXEL*trand);
-        //     // }
-        //     // r.origin.xy = r.origin.xy + offs;
-        //     fcolor+=vec3(rayColor(r));
-        // }
-        // fcolor/=SAMPLES_PER_PIXEL;
+        ray r;
+        r.origin=cameraPosition;
+        vec3 rayDir=normalize(vec3(screenCoords,-1.) - cameraPosition);
+        r.direction= (normalize(rotationMatrix*(vec4(rayDir,1.0)))).xyz;
+        vec3 fcolor=vec3(0.f);
+        int SAMPLES_PER_PIXEL=10;
+        float offs = 0.0001;
+        for(int i=0;i<SAMPLES_PER_PIXEL;i++){
+            float trand = rand();
+            if(trand < 0.5){
+                offs = -(offs)/(SAMPLES_PER_PIXEL*trand);
+            }
+            r.origin.xy = r.origin.xy + offs;
+            fcolor+=vec3(rayColor(r));
+        }
+        fcolor/=SAMPLES_PER_PIXEL;
     
     //NEW ANTI_ALIASING DON"T THINK IT IS UPTO THE MARK
 
-    ray r;
-    r.origin=cameraPosition;
-    // vec3 try=vec3(screenCoords,-1.)-cameraPosition;
-    // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
+    // ray r;
+    // r.origin=cameraPosition;
+    // // vec3 try=vec3(screenCoords,-1.)-cameraPosition;
+    // // r.direction=(normalize(vec4(try,0.))*rotationMatrix).xyz;
 
-    vec3 fcolor=vec3(0.f);
-    int SAMPLES_PER_PIXEL=2;
-    ray jitteredRay;
-    for(int i=0;i<SAMPLES_PER_PIXEL;i++){
-        //OFFSET within a pixel
-        float u=(gl_FragCoord.x+rand())/iResolution.x;
-        float v=(gl_FragCoord.y+rand())/iResolution.y;
+    // vec3 fcolor=vec3(0.f);
+    // int SAMPLES_PER_PIXEL=2;
+    // ray jitteredRay;
+    // for(int i=0;i<SAMPLES_PER_PIXEL;i++){
+    //     //OFFSET within a pixel
+    //     float u=(gl_FragCoord.x+rand())/iResolution.x;
+    //     float v=(gl_FragCoord.y+rand())/iResolution.y;
 
-        // Compute the ray direction based on the pixel position and offsets
-        vec3 rayDir=normalize(vec3(screenCoords+(pow(-1,i)*vec2(u,v)) ,-1.) - cameraPosition);
+    //     // Compute the ray direction based on the pixel position and offsets
+    //     vec3 rayDir=normalize(vec3(screenCoords+vec2(u,v) ,-1.) - cameraPosition);
 
-        // Create the ray with the new direction
-        jitteredRay.origin = r.origin;
-        jitteredRay.direction= (normalize(rotationMatrix*(vec4(rayDir,1.0)))).xyz;
-        // jitteredRay.direction= (normalize(vec4(rayDir, 0.0)*rotationMatrix)).xyz;
-        // jitteredRay.direction = rayDir;
-        fcolor+=vec3(rayColor(jitteredRay));
-    }
-        fcolor/=SAMPLES_PER_PIXEL;
+    //     // Create the ray with the new direction
+    //     jitteredRay.origin = r.origin;
+    //     jitteredRay.direction= (normalize(rotationMatrix*(vec4(rayDir,1.0)))).xyz;
+    //     // jitteredRay.direction= (normalize(vec4(rayDir, 0.0)*rotationMatrix)).xyz;
+    //     // jitteredRay.direction = rayDir;
+    //     fcolor+=vec3(rayColor(jitteredRay));
+    // }
+    //     fcolor/=SAMPLES_PER_PIXEL;
 
 
         //gamma correction
