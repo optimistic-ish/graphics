@@ -15,8 +15,8 @@ void main() {
 
 #define PI  3.1415926535
 #define SAMPLING_DEPTH 16
-#define NO_OF_OBJECTS 2
-#define NO_OF_QUADS 12
+#define NO_OF_OBJECTS 8
+#define NO_OF_QUADS 13
 
 #define RENDER_DISTANCE 99999
 
@@ -24,6 +24,10 @@ void main() {
 #define ROUGH_SURFACE 0
 #define METALLIC_SURFACE 1
 #define DIELECTRIC 2
+
+#define SPHERE 0
+#define QUAD 1
+#define TRIANGLE 2
 
 out vec4 FragColor;
 in vec2 textureCoordinates;
@@ -54,6 +58,8 @@ struct MaterialProperties
 
     bool isLightSource;
     float specularProbability;
+
+    int polygonType;
 };
 struct Quad{
     vec3 Q;
@@ -118,6 +124,7 @@ bool isInterior(float a, float b, out hit_record rec){
     return true;
 }
 
+
 bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_record rec){
     float denom = dot(plane.normal, r.direction);
     if(abs(denom) < 0.000001)
@@ -130,12 +137,35 @@ bool hit_box(const Quad plane, const ray r,float t_min, float t_max ,out hit_rec
         return false;
     }
     vec3 intersection = r.origin + t*r.direction;
-    vec3 planeHitPoint = intersection - plane.Q;
-    float alpha = dot(plane.w, cross(planeHitPoint, plane.v));
-    float beta = dot(plane.w , cross(plane.u , planeHitPoint));
-    
-    if(!isInterior(alpha, beta, rec)){
-        return false;
+    if(plane.material.polygonType == QUAD)
+    {
+        vec3 planeHitPoint = intersection - plane.Q;
+        float alpha = dot(plane.w, cross(planeHitPoint, plane.v));
+        float beta = dot(plane.w , cross(plane.u , planeHitPoint));
+
+        if(!isInterior(alpha, beta, rec)){
+            return false;
+        }
+    }
+    else if(plane.material.polygonType == TRIANGLE){
+        vec3 C;
+
+        vec3 edge0 = plane.u - plane.Q;
+        vec3 vp0 = intersection - plane.Q;
+        C = cross(edge0, vp0);
+        if ( dot(plane.normal, C)< 0) return false; // P is on the right side
+
+        // edge 1
+        vec3 edge1 = plane.v - plane.u;
+        vec3 vp1 = intersection - plane.u;
+        C = cross(edge1, vp1);
+        if ((dot(plane.normal, C)) < 0)  return false; // P is on the right side
+
+        // edge 2
+        vec3 edge2 = plane.Q- plane.v;
+        vec3 vp2 = intersection - plane.v;
+        C = cross(edge2, vp2);
+        if ((dot(plane.normal, C)) < 0)  return false; // P is on the right side
     }
 
     rec.t = t;
@@ -287,8 +317,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
         {
     
             //TRYING DIFFERENT DIFFUSION METHOD
-            // vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
-            vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
+            vec3 target=isectInfo.p+isectInfo.normal+random_in_unit_sphere();
+            // vec3 target=isectInfo.p+isectInfo.normal+random_in_hemisphere(isectInfo.normal);
             
             nori.origin=isectInfo.p;
             nori.direction=target-isectInfo.p;
@@ -300,8 +330,8 @@ bool material_bsdf(hit_record isectInfo, ray origin, out ray nori, out vec3 atte
             nori.origin = isectInfo.p;
             vec3 actualReflected = reflectRay(normalize(origin.direction), normalize(isectInfo.normal));
             
-            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
-            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
+            nori.direction = actualReflected + isectInfo.material.fuzz*random_in_unit_sphere();
+            // nori.direction = actualReflected + isectInfo.material.fuzz*random_in_hemisphere(isectInfo.normal);
             
             attenuation = isectInfo.material.albedo;
 
@@ -474,6 +504,7 @@ void main()
         bool isLightSource=false;
         
         MaterialProperties materialProp;
+        materialProp.polygonType = SPHERE;
         materialProp.albedo=vec3(1.,1.,1.);
         materialProp.surfaceType=DIELECTRIC;
         materialProp.fuzz=0.03;
@@ -557,46 +588,63 @@ void main()
         float D = 0.0;
         vec3 normal = vec3(0.0);
         vec3 w = vec3(0.0);
-        materialProp.surfaceType = METALLIC_SURFACE;
-        materialProp.specularProbability = 0.4f;
-        
-        materialProp.albedo = vec3(0.2353, 1.0, 0.0);
-        Quad qObj = Quad(vec3(0.09,   -0.5,   0),   vec3(  0, 1,   0),   vec3(  0,   0, 1),   D, normal , w, materialProp);
-        initializeQuad(0, qObj);
+//        materialProp.surfaceType = METALLIC_SURFACE;
+//        materialProp.specularProbability = 0.4f;
+//
+//        materialProp.albedo = vec3(0.2353, 1.0, 0.0);
+//        Quad qObj = Quad(vec3(0.09,   -0.5,   0),   vec3(  0, 1,   0),   vec3(  0,   0, 1),   D, normal , w, materialProp);
+//        initializeQuad(0, qObj);
+//
+//        materialProp.albedo = vec3(1.0, 0.0, 0.0);
+//        qObj = Quad(vec3(-0.9, -0.5, 0),   vec3(  0, 1,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);
+//        initializeQuad(1, qObj);
+//
+//        materialProp.isLightSource = true;
+//        materialProp.albedo = vec3(1.0, 0.6, 0.0);
+//        qObj = Quad(vec3(-0.25, 0.49999, 0.3),   vec3(-0.25,   0,   0),   vec3(  0,   0,0.25),  D, normal , w, materialProp);
+//        initializeQuad(2, qObj);
+//        materialProp.isLightSource = false;
+//
+//        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+//        qObj = Quad(vec3(  -0.9f,   -0.5,   0),   vec3(1,   0,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);
+//        initializeQuad(3, qObj);
+//
+//
+//        //top
+//        materialProp.albedo = vec3(0.9882, 0.9882, 0.9882);
+//        qObj = Quad(vec3(0.09, 0.5,0),   vec3(-1,   0,   0),   vec3(  0,   0,1),  D, normal , w, materialProp);
+//        initializeQuad(4, qObj);
+//
+//        //backwall
+//        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+//        qObj = Quad(vec3( -0.9, -0.5, -0.00005),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);
+//        initializeQuad(5, qObj);
+//
+//        materialProp.albedo = vec3(1.0, 1.0, 1.0);
+//        qObj = Quad(vec3( -0.9, -0.5, 1),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);
+//        initializeQuad(6, qObj);
 
-        materialProp.albedo = vec3(1.0, 0.0, 0.0);
-        qObj = Quad(vec3(-0.9, -0.5, 0),   vec3(  0, 1,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);   
-        initializeQuad(1, qObj);
-        
-        materialProp.isLightSource = true;
-        materialProp.albedo = vec3(1.0, 0.6, 0.0);
-        qObj = Quad(vec3(-0.25, 0.49999, 0.3),   vec3(-0.25,   0,   0),   vec3(  0,   0,0.25),  D, normal , w, materialProp);   
-        initializeQuad(2, qObj);
-        materialProp.isLightSource = false;
-
-        materialProp.albedo = vec3(1.0, 1.0, 1.0);
-        qObj = Quad(vec3(  -0.9f,   -0.5,   0),   vec3(1,   0,   0),   vec3(  0,   0, 1), D, normal , w, materialProp);   
-        initializeQuad(3, qObj);
-        
-
-        //top
-        materialProp.albedo = vec3(0.9882, 0.9882, 0.9882);
-        qObj = Quad(vec3(0.09, 0.5,0),   vec3(-1,   0,   0),   vec3(  0,   0,1),  D, normal , w, materialProp);   
-        initializeQuad(4, qObj);
-        
-        //backwall
-        materialProp.albedo = vec3(1.0, 1.0, 1.0);
-        qObj = Quad(vec3( -0.9, -0.5, -0.00005),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
-        initializeQuad(5, qObj);
-        
-        // materialProp.albedo = vec3(1.0, 1.0, 1.0);
-        // qObj = Quad(vec3( -0.9, -0.5, 1),   vec3(1,0 ,0),   vec3( 0,1,0),   D, normal , w, materialProp);    
-        // initializeQuad(6, qObj);
-
-        int startInde = 6;
+        materialProp.polygonType = QUAD;
+        int startIndex = 0;
         materialProp.surfaceType = DIELECTRIC;
         materialProp.albedo = vec3(0.9216, 0.0, 0.0);
-        createBox(vec3(0.0), vec3(0.5), materialProp, startInde);
+        createBox(vec3(-0.2), vec3(-0.5), materialProp, startIndex);
+
+        // startIndex = 6;
+        materialProp.surfaceType = METALLIC_SURFACE;
+        materialProp.albedo = vec3(1.0, 0.4627, 0.4627);
+        materialProp.specularProbability = 1.0;
+        materialProp.fuzz = 0.3;
+        createBox(vec3(-0.1), vec3(-0.5), materialProp, startIndex);
+
+
+
+        //TRIANGLE
+        materialProp.polygonType = TRIANGLE;
+        materialProp.surfaceType = ROUGH_SURFACE;
+        materialProp.albedo = vec3(1.0, 0.0, 1.0);
+        Quad qObj = Quad(vec3( 0.0, 0.0, 0.0),   vec3(0.5,0 ,0),   vec3( 0,0.5,0),   D, normal , w, materialProp);
+        initializeQuad(startIndex, qObj);
 
         vec2 seedNum=vec2(seed,seed)+gl_FragCoord.xy;
         co.xy=seedNum.xy/iResolution.xy;
